@@ -9,7 +9,7 @@ import (
 	"github.com/BurntSushi/xgbutil/motif"
 	"github.com/BurntSushi/xgbutil/xrect"
 	"github.com/BurntSushi/xgbutil/xwindow"
-	"github.com/blrsn/zentile/state"
+	"github.com/Alnivel/zentile/state"
 	log "github.com/sirupsen/logrus"
 )
 

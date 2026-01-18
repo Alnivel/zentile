@@ -1,4 +1,4 @@
-module github.com/blrsn/zentile
+module github.com/Alnivel/zentile
 
 go 1.12
 
@@ -8,4 +8,9 @@ require (
 	github.com/BurntSushi/xgbutil v0.0.0-20160919175755-f7c97cef3b4e
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/sirupsen/logrus v1.4.2
+)
+
+replace (
+	github.com/BurntSushi/xgb => github.com/jezek/xgb v0.0.0-20160522181843-27f122750802
+	github.com/BurntSushi/xgbutil => github.com/jezek/xgbutil v0.0.0-20160919175755-f7c97cef3b4e
 )

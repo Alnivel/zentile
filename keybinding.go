@@ -4,7 +4,7 @@ import (
 	"github.com/BurntSushi/xgbutil"
 	"github.com/BurntSushi/xgbutil/keybind"
 	"github.com/BurntSushi/xgbutil/xevent"
-	"github.com/blrsn/zentile/state"
+	"github.com/Alnivel/zentile/state"
 	log "github.com/sirupsen/logrus"
 )
 

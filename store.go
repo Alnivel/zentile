@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/blrsn/zentile/state"
+	"github.com/Alnivel/zentile/state"
 )
 
 type Store struct {

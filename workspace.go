@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/blrsn/zentile/state"
+	"github.com/Alnivel/zentile/state"
 )
 
 type Workspace struct {

@@ -6,7 +6,7 @@ import (
 	"github.com/BurntSushi/xgbutil/ewmh"
 	"github.com/BurntSushi/xgbutil/xevent"
 	"github.com/BurntSushi/xgbutil/xprop"
-	"github.com/blrsn/zentile/state"
+	"github.com/Alnivel/zentile/state"
 )
 
 type tracker struct {
