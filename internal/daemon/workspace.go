@@ -1,9 +1,9 @@
-package main
+package daemon
 
 import (
 	"fmt"
 
-	"github.com/Alnivel/zentile/state"
+	"github.com/Alnivel/zentile/internal/daemon/state"
 )
 
 type Workspace struct {
