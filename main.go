@@ -13,7 +13,8 @@ func main() {
 	state.Populate()
 
 	t := initTracker(CreateWorkspaces())
-	bindKeys(t)
+	actions := initActions(t)
+	bindKeys(actions)
 
 	// Run X event loop
 	xevent.Main(state.X)
