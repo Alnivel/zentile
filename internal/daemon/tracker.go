@@ -1,4 +1,4 @@
-package main
+package daemon
 
 import (
 	"github.com/BurntSushi/xgb/xproto"
@@ -6,7 +6,7 @@ import (
 	"github.com/BurntSushi/xgbutil/ewmh"
 	"github.com/BurntSushi/xgbutil/xevent"
 	"github.com/BurntSushi/xgbutil/xprop"
-	"github.com/Alnivel/zentile/state"
+	"github.com/Alnivel/zentile/internal/daemon/state"
 )
 
 type tracker struct {

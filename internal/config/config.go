@@ -1,4 +1,4 @@
-package main
+package config
 
 import (
 	"io/ioutil"
@@ -10,9 +10,7 @@ import (
 	"github.com/mitchellh/go-homedir"
 )
 
-var Config cfg
-
-type cfg struct {
+type Config struct {
 	Keybindings     map[string]string
 	WindowsToIgnore []string `toml:"ignore"`
 	Gap             int
@@ -20,9 +18,11 @@ type cfg struct {
 	HideDecor       bool `toml:"remove_decorations"`
 }
 
-func init() {
+func InitConfig() (Config, error) {
+	config := Config{}
 	writeDefaultConfig()
-	toml.DecodeFile(configFilePath(), &Config)
+	_, err := toml.DecodeFile(configFilePath(), &config)
+	return config, err
 }
 
 func writeDefaultConfig() {

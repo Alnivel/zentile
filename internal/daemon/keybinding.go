@@ -1,7 +1,7 @@
-package main
+package daemon
 
 import (
-	"github.com/Alnivel/zentile/state"
+	"github.com/Alnivel/zentile/internal/daemon/state"
 	"github.com/BurntSushi/xgbutil"
 	"github.com/BurntSushi/xgbutil/keybind"
 	"github.com/BurntSushi/xgbutil/xevent"

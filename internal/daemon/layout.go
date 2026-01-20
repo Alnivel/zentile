@@ -1,4 +1,4 @@
-package main
+package daemon
 
 const (
 	MASTER_MAX_PROPORTION = 0.9

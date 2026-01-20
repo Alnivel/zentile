@@ -1,4 +1,4 @@
-package main
+package daemon
 
 import (
 	"strings"
@@ -9,7 +9,7 @@ import (
 	"github.com/BurntSushi/xgbutil/motif"
 	"github.com/BurntSushi/xgbutil/xrect"
 	"github.com/BurntSushi/xgbutil/xwindow"
-	"github.com/Alnivel/zentile/state"
+	"github.com/Alnivel/zentile/internal/daemon/state"
 	log "github.com/sirupsen/logrus"
 )
 
