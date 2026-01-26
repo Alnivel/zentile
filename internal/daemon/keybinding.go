@@ -11,11 +11,16 @@ import (
 type keyMapper struct{}
 
 func (k keyMapper) bind(action string, f func()) {
+	keyStr := Config.Keybindings[action]
+    if len(keyStr) == 0 {
+		return
+	}
+
 	err := keybind.KeyPressFun(
 		func(X *xgbutil.XUtil, ev xevent.KeyPressEvent) {
 			f()
 		}).Connect(state.X, state.X.RootWin(),
-		Config.Keybindings[action], true)
+		keyStr, true)
 
 	if err != nil {
 		log.Warn(err)

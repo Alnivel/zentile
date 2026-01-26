@@ -1,12 +1,20 @@
 package daemon
 
 import (
+	"errors"
+
 	"github.com/Alnivel/zentile/internal/daemon/state"
 )
 
 type ActionFunc func()
+type QueryFunc func() string
 
-func initActions(tracker *tracker) map[string]ActionFunc {
+type Commands struct {
+	Actions map[string]ActionFunc
+	Queries map[string]QueryFunc
+}
+
+func InitCommands(tracker *tracker) Commands {
 	var workspaces map[uint]*Workspace
 
 	if tracker != nil {
@@ -72,5 +80,30 @@ func initActions(tracker *tracker) map[string]ActionFunc {
 			actions[key] = nil
 		}
 	}
-	return actions
+	return Commands{
+		Actions: actions,
+	}
+}
+
+var (
+	CommandNotExists = errors.New("Command do not exists")
+)
+
+func (c Commands) DoAction(name string) error {
+	action, exists := c.Actions[name]
+	if exists {
+		action()
+		return nil
+	} else {
+		return CommandNotExists
+	}
+}
+
+func (c Commands) DoQuery(name string) (string, error) {
+	query, exists := c.Queries[name]
+	if exists {
+		return query(), nil
+	} else {
+		return "", CommandNotExists
+	}
 }
