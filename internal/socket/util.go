@@ -10,6 +10,7 @@ import (
 var (
 	ReadError         = errors.New("Failed to read from connection")
 	SplitTooLongError = errors.New("Message is longer than the read buffer")
+	InvalidSeparatorError = errors.New("Separator cannot be zero length")
 )
 
 func readSplitSeq(conn net.Conn, sep []byte) iter.Seq2[[]byte, error] {
