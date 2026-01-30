@@ -19,6 +19,10 @@ func readSplitSeq(conn net.Conn, sep []byte) iter.Seq2[[]byte, error] {
 		splitBuf := make([]byte, 0, 512)
 
 		sepLen := len(sep)
+		if sepLen == 0 {
+			yield(nil, InvalidSeparatorError)
+			return
+		}
 	ReadLoop:
 		for {
 			n, err := conn.Read(readBuf)
@@ -32,10 +36,8 @@ func readSplitSeq(conn net.Conn, sep []byte) iter.Seq2[[]byte, error] {
 				n -= len(split) + sepLen // Account for the separator
 
 				if cap(splitBuf) < len(splitBuf)+len(split) {
-					if err != nil {
-						if !yield(nil, err) {
-							return
-						}
+					if !yield(nil, SplitTooLongError) {
+						return
 					}
 				}
 
