@@ -58,13 +58,16 @@ func handleConnection(conn socket.Conn, commands Commands, pingBefore chan<- str
 		case "PING":
 			conn.Send("PONG")
 		case "ACTION":
-			name := message.Args[0]
-			err = commands.DoAction(name)
-			sendErrOrVals(conn, err)
+			fallthrough
+		case "SET":
+			fallthrough
 		case "QUERY":
-			name := message.Args[0]
-			result, err := commands.DoQuery(name)
-			sendErrOrVals(conn, err, result)
+			if len(message.Args) >= 1 {
+				vals, err := commands.Do(CommandType(message.Kind), message.Args[0], message.Args[1:]...)
+				sendErrOrVals(conn, err, vals...)
+			} else {
+				conn.Send("ERR", "Command must have at least one argument")
+			}
 		}
 
 		pingAfter <- struct{}{}

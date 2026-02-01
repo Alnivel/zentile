@@ -2,6 +2,7 @@ package daemon
 
 import (
 	"fmt"
+	"slices"
 
 	"github.com/Alnivel/zentile/internal/daemon/state"
 )
@@ -9,15 +10,19 @@ import (
 type Workspace struct {
 	IsTiling        bool
 	activeLayoutNum uint
-	layouts         []Layout
+	layoutOrder     []string
+	layouts         map[string]Layout
 }
 
 func CreateWorkspaces() map[uint]*Workspace {
 	workspaces := make(map[uint]*Workspace)
+	defaultLayoutOrder := []string{"vertical", "horizontal", "fullscreen"}
+
 	for i := uint(0); i < state.DeskCount; i++ {
 		ws := Workspace{
-			IsTiling: false,
-			layouts:  createLayouts(i),
+			IsTiling:    false,
+			layoutOrder: defaultLayoutOrder,
+			layouts:     createLayouts(defaultLayoutOrder, i),
 		}
 
 		workspaces[i] = &ws
@@ -26,27 +31,56 @@ func CreateWorkspaces() map[uint]*Workspace {
 	return workspaces
 }
 
-func createLayouts(workspaceNum uint) []Layout {
-	return []Layout{
-		&VerticalLayout{&VertHorz{
-			Store:        buildStore(),
-			Proportion:   0.5,
-			WorkspaceNum: workspaceNum,
-		}},
-		&HorizontalLayout{&VertHorz{
-			Store:        buildStore(),
-			Proportion:   0.5,
-			WorkspaceNum: workspaceNum,
-		}},
-		&FullScreen{
-			Store:        buildStore(),
-			WorkspaceNum: workspaceNum,
-		},
+func createLayouts(layoutList []string, workspaceNum uint) map[string]Layout {
+	layouts := make(map[string]Layout, len(layoutList))
+
+	for _, name := range layoutList {
+		switch name {
+		case "vertical":
+			layouts[name] = &VerticalLayout{&VertHorz{
+				Store:        buildStore(),
+				Proportion:   0.5,
+				WorkspaceNum: workspaceNum,
+			}}
+		case "horizontal":
+			layouts[name] = &HorizontalLayout{&VertHorz{
+				Store:        buildStore(),
+				Proportion:   0.5,
+				WorkspaceNum: workspaceNum,
+			}}
+		case "fullscreen":
+			layouts[name] = &FullScreen{
+				Store:        buildStore(),
+				WorkspaceNum: workspaceNum,
+			}
+		}
 	}
+
+	return  layouts
+}
+
+func (ws *Workspace) SetLayoutByName(layoutName string) error {
+	layoutNum := slices.Index(ws.layoutOrder, layoutName)
+	if layoutNum == -1 {
+		return fmt.Errorf("Failed to set non-existent layout %s", layoutName)
+	}
+
+	ws.activeLayoutNum = uint(layoutNum)
+	ws.ActiveLayout().Do()
+
+	return nil
+}
+
+func (ws *Workspace) GetLayoutByName(layoutName string) Layout {
+	return ws.layouts[layoutName]
+}
+
+func (ws *Workspace) ActiveLayoutName() string {
+	return ws.layoutOrder[ws.activeLayoutNum]
 }
 
 func (ws *Workspace) ActiveLayout() Layout {
-	return ws.layouts[ws.activeLayoutNum]
+	return ws.layouts[ws.layoutOrder[ws.activeLayoutNum]]
 }
 
 // Cycle through the available layouts
