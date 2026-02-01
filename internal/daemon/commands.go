@@ -7,14 +7,55 @@ import (
 	"github.com/Alnivel/zentile/internal/daemon/state"
 )
 
+var (
+	UnknownCommandType    = errors.New("Unknown command type")
+	CommandNotExists      = errors.New("Command do not exists")
+	IncorrectNumberOfArgs = errors.New("Incorrect number of arguments")
+)
+
+type commandFunc func(...string) ([]string, error)
+
+type Command struct {
+	MinIn int
+	MaxIn int
+	fn    commandFunc
+}
+
+func (command Command) validateArgCount(count int) error {
+	if count >= command.MinIn && count <= command.MaxIn {
+		return nil
+	}
+
+	if command.MinIn == command.MaxIn {
+		return fmt.Errorf(
+			"%w: got %v, expected %v",
+			IncorrectNumberOfArgs,
+			count, command.MinIn)
+	} else {
+		return fmt.Errorf(
+			"%w: got %v, expected between %v and %v",
+			IncorrectNumberOfArgs,
+			count, command.MinIn, command.MaxIn)
+	}
+}
+
+func (command Command) do(s ...string) ([]string, error) {
+	if err := command.validateArgCount(len(s)); err != nil {
+		return nil, err
+	} else {
+		return command.fn(s...)
+	}
+}
+
 type ActionFunc func()
-type SetFunc func(...string) error
-type QueryFunc func(...string) ([]string, error)
+type CommandMap map[string]Command
 
 type Commands struct {
-	Actions map[string]ActionFunc
-	Setters map[string]SetFunc
-	Queries map[string]QueryFunc
+	Actions CommandMap
+	Setters CommandMap
+	Queries CommandMap
+	// Temporary field, until dispatching from keybinds will be redone
+	KeybindActions map[string]ActionFunc
 }
 
 func InitCommands(tracker *tracker) Commands {
@@ -29,7 +70,7 @@ func InitCommands(tracker *tracker) Commands {
 		workspaces = nil
 	}
 
-	actions := map[string]ActionFunc{
+	keybindActions := map[string]ActionFunc{
 		"tile": func() {
 			ws := workspaces[state.CurrentDesk]
 			ws.IsTiling = true
@@ -77,114 +118,100 @@ func InitCommands(tracker *tracker) Commands {
 			ws.Tile()
 		},
 	}
-	setters := map[string]SetFunc{
-		"layout": func(args ...string) error {
-			if err := CheckArgsCount(args, 1, 1); err != nil {
-				return err
-			}
 
-			layoutName := args[0]
-			ws := workspaces[state.CurrentDesk]
-
-			if layoutName == "none" {
-				ws.Untile()
-				return nil
-			} else {
-				return ws.SetLayoutByName(layoutName)
-			}
-		},
-	}
-	queries := map[string]QueryFunc{
-		"layout": func(args ...string) ([]string, error) {
-			if err := CheckArgsCount(args, 0, 0); err != nil {
-				return nil, err
-			}
-			ws := workspaces[state.CurrentDesk]
-			if ws.IsTiling {
-				return []string{ws.ActiveLayoutName()}, nil
-			} else {
-				return []string{"none"}, nil
-			}
+	actions := CommandMap{
+		"swap": Command{
+			MinIn: 2, MaxIn: 2,
+			fn: func (args ...string) ([]string, error) {
+				return []string{"swop", args[0], args[1]}, nil
+			},
 		},
 	}
 
-	if tracker == nil {
-		nilMapValues(actions)
-		nilMapValues(queries)
-		nilMapValues(setters)
+	// TODO: Remove when keybind dispatching will be redone
+	for k, v := range keybindActions {
+		actions[k] = Command{
+			fn: wrapActionToCommandFunc(v),
+		}
 	}
+
+	setters := CommandMap{
+		"layout": Command{
+			MinIn: 1, MaxIn: 1,
+			fn: func(args ...string) ([]string, error) {
+				layoutName := args[0]
+				ws := workspaces[state.CurrentDesk]
+
+				if layoutName == "none" {
+					ws.Untile()
+					return nil, nil
+				} else {
+					return nil, ws.SetLayoutByName(layoutName)
+				}
+			},
+		},
+	}
+	queries := CommandMap{
+		"layout": Command{
+			MinIn: 0, MaxIn: 0,
+			fn: func(args ...string) ([]string, error) {
+				ws := workspaces[state.CurrentDesk]
+				if ws.IsTiling {
+					return []string{ws.ActiveLayoutName()}, nil
+				} else {
+					return []string{"none"}, nil
+				}
+			},
+		},
+	}
+
 	return Commands{
-		Actions: actions,
-		Queries: queries,
-		Setters: setters,
+		Actions:        actions,
+		Queries:        queries,
+		Setters:        setters,
+		KeybindActions: keybindActions,
 	}
 }
 
-func nilMapValues[K comparable, V any](map_ map[K]V) {
-	var nilAtHome V
-	for key := range map_ {
-		map_[key] = nilAtHome
+// TODO: Remove when keybind dispatching will be redone
+func wrapActionToCommandFunc(fn ActionFunc) commandFunc {
+	return func(s ...string) ([]string, error) {
+		fn()
+		return nil, nil
 	}
 }
-
-func CheckArgsCount(args []string, min int, max int) error {
-	count := len(args)
-	if count >= min && count <= max {
-		return nil
-	}
-
-	if min == max {
-		return fmt.Errorf(
-			"%w: got %v, expected %v",
-			IncorrectNumberOfArgs,
-			count, min)
-	} else {
-		return fmt.Errorf(
-			"%w: got %v, expected between %v and %v",
-			IncorrectNumberOfArgs,
-			count, min, max)
-	}
-}
-
-var (
-	UnknownCommandType    = errors.New("Unknown command type")
-	CommandNotExists      = errors.New("Command do not exists")
-	IncorrectNumberOfArgs = errors.New("Incorrect number of arguments")
-)
 
 type CommandType string
 
 const (
-	Action = "ACTION"
-	Set    = "SET"
-	Query  = "QUERY"
+	Action CommandType = "ACTION"
+	Set    CommandType = "SET"
+	Query  CommandType = "QUERY"
 )
 
-func (c Commands) Do(kind CommandType, name string, args ...string) ([]string, error) {
+func (c Commands) Map(kind CommandType) CommandMap {
 	switch kind {
 	case Action:
-		action, exists := c.Actions[name]
-		if exists {
-			action()
-			return nil, nil
-		} else {
-			return nil, CommandNotExists
-		}
+		return c.Actions
 	case Set:
-		setter, exists := c.Setters[name]
-		if exists {
-			return nil, setter(args...)
-		} else {
-			return nil, CommandNotExists
-		}
+		return c.Setters
 	case Query:
-		query, exists := c.Queries[name]
-		if exists {
-			return query(args...)
-		} else {
-			return nil, CommandNotExists
-		}
+		return c.Queries
 	default:
+		return nil
+	}
+}
+
+func (c Commands) Do(kind CommandType, name string, args ...string) ([]string, error) {
+	commandMap := c.Map(kind)
+	if commandMap == nil {
 		return nil, UnknownCommandType
+	}
+
+	command, exists := commandMap[name]
+	if !exists {
+		return nil, CommandNotExists
+	} else {
+		return command.do(args...)
 	}
 }

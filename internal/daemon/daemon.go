@@ -19,7 +19,7 @@ func Start(config config.Config, args []string) {
 
 	t := initTracker(CreateWorkspaces())
 	commands := InitCommands(t)
-	bindKeys(commands.Actions)
+	bindKeys(commands.KeybindActions)
 
 	pingBeforeXEvent, pingAfterXEvent, pingXQuit := xevent.MainPing(state.X)
 

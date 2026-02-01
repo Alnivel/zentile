@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"iter"
 	"slices"
+	"strings"
 
 	"github.com/Alnivel/zentile/internal/daemon"
 )
@@ -37,11 +38,25 @@ func parseArgs(args []string) ([]Command, error) {
 
 		switch {
 		case isSetter(currentArg):
-			command, err = parseSetter(currentArg, getNextArg)
+			fallthrough
 		case isQuery(currentArg):
-			command, err = parseQuery(currentArg, getNextArg)
+			kind := currentArg
+
+			currentArg, exists := getNextArg()
+			if exists == false {
+				return nil, fmt.Errorf(
+					"%w: %v name is not provided",
+					TooFewArguments, kind,
+				)
+			}
+			name := currentArg
+
+			command, err = parseCommand(kind, name, getNextArg)
 		case isAction(currentArg):
-			command, err = parseAction(currentArg, getNextArg)
+			kind := "action"
+			name := currentArg
+
+			command, err = parseCommand(kind, name, getNextArg)
 		default:
 			err = UnknownCommand
 		}
@@ -56,112 +71,51 @@ func parseArgs(args []string) ([]Command, error) {
 	return commands, nil
 }
 
-func isSetter(currentArg string) bool {
-	return currentArg == "set"
+func parseCommandType(arg string) daemon.CommandType {
+	return daemon.CommandType(strings.ToUpper(arg))
 }
-
-func parseSetter(currentArg string, getNextArg func() (string, bool)) (Command, error) {
-	_ = currentArg
-	setterName, exists := getNextArg()
+func parseCommand(commandKind string, commandName string, getNextArg func() (string, bool)) (Command, error) {
+	commandType := parseCommandType(commandKind)
+	command, exists := daemonCommands.Map(commandType)[commandName]
 	if exists == false {
 		return Command{}, fmt.Errorf(
-			"%w: what to set is not provided",
-			TooFewArguments,
+			"%w: %v %v",
+			UnknownCommand, commandKind, commandName,
 		)
 	}
 
-	if _, exists = daemonCommands.Setters[setterName]; exists == false {
-		return Command{}, fmt.Errorf(
-			"%w: set %v",
-			UnknownCommand, setterName,
-		)
-	}
-
-	setterArgs, success := pullNArgs(getNextArg, 1)
-	if success == false {
-		return Command{}, fmt.Errorf(
-			"%w: set %v expects %v argument, but %v was provided",
-			TooFewArguments, setterName, 1, len(setterArgs),
-		)
+	commandArgs, _ := pullNArgs(getNextArg, command.MaxIn)
+	if len(commandArgs) < command.MinIn {
+		if command.MinIn == command.MaxIn {
+			return Command{}, fmt.Errorf(
+				"%w: %v %v expects %v argument, but %v was provided",
+				TooFewArguments, commandKind, commandName, command.MinIn, len(commandArgs),
+			)
+		} else {
+			return Command{}, fmt.Errorf(
+				"%w: %v %v expects between %v and %v arguments, but %v was provided",
+				TooFewArguments, commandKind, commandName, command.MinIn, command.MaxIn, len(commandArgs),
+			)
+		}
 	}
 
 	return Command{
-		Kind: "SET",
-		Args: append([]string{setterName}, setterArgs...),
+		Kind: string(commandType),
+		Args: append([]string{commandName}, commandArgs...),
 	}, nil
+}
+
+func isSetter(currentArg string) bool {
+	return currentArg == "set"
 }
 
 func isQuery(currentArg string) bool {
 	return currentArg == "query"
 }
 
-func parseQuery(currentArg string, getNextArg func() (string, bool)) (Command, error) {
-	_ = currentArg
-	queryName, exists := getNextArg()
-	if exists == false {
-		return Command{}, fmt.Errorf(
-			"%w: what to query is not provided",
-			TooFewArguments,
-		)
-	}
-
-	if _, exists = daemonCommands.Queries[queryName]; exists == false {
-		return Command{}, fmt.Errorf(
-			"%w: query %v",
-			UnknownCommand, queryName,
-		)
-	}
-
-	if err := checkCommandExists("query", queryName); err != nil {
-		return Command{}, err
-	}
-
-	return Command{
-		Kind: "QUERY",
-		Args: []string{queryName},
-	}, nil
-}
-
 func isAction(currentArg string) bool {
 	_, exists := daemonCommands.Actions[currentArg]
 	return exists
-}
-
-func parseAction(currentArg string, getNextArg func() (string, bool)) (Command, error) {
-	_ = getNextArg
-
-	if err := checkCommandExists("action", currentArg); err != nil {
-		return Command{}, err
-	}
-
-	return Command{
-		Kind: "ACTION",
-		Args: []string{currentArg},
-	}, nil
-}
-
-func checkCommandExists(kind string, name string) error {
-	var exists bool = false
-
-	switch kind {
-	case "query":
-		map_ := daemonCommands.Queries
-		_, exists = map_[name]
-	case "set":
-		map_ := daemonCommands.Setters
-		_, exists = map_[name]
-	case "action":
-		map_ := daemonCommands.Actions
-		_, exists = map_[name]
-	}
-
-	if !exists {
-		return fmt.Errorf(
-			"%w: %v %v",
-			UnknownCommand, kind, name,
-		)
-	}
-	return nil
 }
 
 func pullNArgs(getNextArg func() (string, bool), count int) ([]string, bool) {
