@@ -8,9 +8,14 @@ const (
 type Layout interface {
 	Do()
 	Undo()
-	Add(c Client)
-	Remove(c Client)
-	MakeMaster(c Client)
+	Add(client Client)
+	Remove(client Client)
+	MakeMaster(client Client) bool
+	Swap(client Client, otherClient Client) bool
+
+	MakeMasterById(id ClientId) bool
+	SwapById(id ClientId, otherId ClientId) bool
+	
 	IncMaster()
 	DecreaseMaster()
 	NextClient()

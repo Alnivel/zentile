@@ -1,19 +1,32 @@
 package daemon
 
 import (
+	"strconv"
 	"strings"
 
+	"github.com/Alnivel/zentile/internal/daemon/state"
 	"github.com/BurntSushi/xgb/xproto"
 	"github.com/BurntSushi/xgbutil/ewmh"
 	"github.com/BurntSushi/xgbutil/icccm"
 	"github.com/BurntSushi/xgbutil/motif"
 	"github.com/BurntSushi/xgbutil/xrect"
 	"github.com/BurntSushi/xgbutil/xwindow"
-	"github.com/Alnivel/zentile/internal/daemon/state"
 	log "github.com/sirupsen/logrus"
 )
 
+type ClientId xproto.Window
+
+func newClientIdFromWid(w xproto.Window) ClientId {
+	return ClientId(w)
+}
+
+func ParseClientId(str string) (ClientId, error) {
+	val, err := strconv.ParseUint(str, 0, 32)
+	return ClientId(val), err
+}
+
 type Client struct {
+	Id        ClientId
 	window    *xwindow.Window
 	Desk      uint // Desktop the client is currently in.
 	savedProp Prop // Properties that the client had, before it was tiled.
@@ -38,6 +51,7 @@ func newClient(w xproto.Window) (c Client) {
 	}
 
 	c = Client{
+		Id:     newClientIdFromWid(w),
 		window: win,
 		Desk:   desk,
 		savedProp: Prop{
@@ -116,7 +130,7 @@ func (c Client) Restore() {
 	c.MoveResize(geom.X(), geom.Y(), geom.Width(), geom.Height())
 }
 
-//  Activate makes the client the currently active window
+// Activate makes the client the currently active window
 func (c Client) Activate() {
 	ewmh.ActiveWindowReq(state.X, c.window.Id)
 }

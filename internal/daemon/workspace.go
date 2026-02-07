@@ -66,6 +66,7 @@ func (ws *Workspace) SetLayoutByName(layoutName string) error {
 	}
 
 	ws.activeLayoutNum = uint(layoutNum)
+	ws.IsTiling = true
 	ws.ActiveLayout().Do()
 
 	return nil

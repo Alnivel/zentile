@@ -66,12 +66,60 @@ func (st *Store) DecreaseMaster() {
 	}
 }
 
-func (st *Store) MakeMaster(c Client) {
+func (st *Store) MakeMaster(c Client) bool {
+	return st.MakeMasterById(c.Id)
+}
+
+func (st *Store) MakeMasterById(id ClientId) bool {
 	for i, slave := range st.slaves {
-		if slave.window.Id == c.window.Id {
+		if slave.Id == id {
 			st.masters[0], st.slaves[i] = st.slaves[i], st.masters[0]
+			return true
 		}
 	}
+	return false
+}
+
+func (st *Store) Swap(this_client Client, that_client Client) bool {
+	return st.SwapById(this_client.Id, that_client.Id)
+}
+
+func (st *Store) SwapById(thisId ClientId, thatId ClientId) bool {
+	var thisSlice []Client = nil
+	var thatSlice []Client = nil
+
+	var thisIndex = -1
+	var thatIndex = -1
+	
+
+	for index, master := range st.masters {
+		switch master.Id {
+		case thisId:
+			thisIndex = index
+			thisSlice = st.masters
+		case thatId:
+			thatIndex = index
+			thatSlice = st.masters
+		}
+	}
+
+	for index, slave := range st.slaves {
+		switch slave.Id {
+		case thisId:
+			thisIndex = index
+			thisSlice = st.slaves
+		case thatId:
+			thatIndex = index
+			thatSlice = st.slaves
+		}
+	}
+
+	if thisSlice == nil || thatSlice == nil {
+		return false
+	}
+
+	thisSlice[thisIndex], thatSlice[thatIndex] = thatSlice[thatIndex], thisSlice[thisIndex]
+	return true
 }
 
 func (st *Store) All() []Client {

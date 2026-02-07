@@ -121,9 +121,42 @@ func InitCommands(tracker *tracker) Commands {
 
 	actions := CommandMap{
 		"swap": Command{
-			MinIn: 2, MaxIn: 2,
-			fn: func (args ...string) ([]string, error) {
-				return []string{"swop", args[0], args[1]}, nil
+			MinIn: 1, MaxIn: 2,
+			fn: func(args ...string) ([]string, error) {
+				var secondId, firstId ClientId
+				var secondIdErr, firstIdErr error
+
+				firstId, firstIdErr = ParseClientId(args[0])
+				if firstIdErr != nil {
+					firstIdErr = fmt.Errorf("Parse error for client id \"%v\": %w", args[0], firstIdErr)
+				}
+
+				if len(args) == 1 {
+					activeClient := tracker.clients[state.ActiveWin]
+					secondId = activeClient.Id
+				} else {
+					secondId, secondIdErr = ParseClientId(args[1])
+				}
+				if secondIdErr != nil {
+					secondIdErr = fmt.Errorf("Parse error for client id \"%v\": %w", args[1], secondIdErr)
+				}
+
+				if err := errors.Join(firstIdErr, secondIdErr); err != nil {
+					return nil, err
+				}
+				
+
+				ws := workspaces[state.CurrentDesk]
+				success := ws.ActiveLayout().SwapById(secondId, firstId)
+				if !success {
+					return nil, fmt.Errorf(
+						"Cliend id %v was not found in current workspace",
+						args[0],
+					)
+				}
+				ws.Tile()
+
+				return nil, nil
 			},
 		},
 	}
