@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"iter"
-	"slices"
 	"strings"
 
 	"github.com/Alnivel/zentile/internal/daemon"
@@ -22,8 +21,10 @@ var (
 	UnknownCommand  = errors.New("Unknown command")
 )
 
+const COMMAND_SEPARATOR = ","
+
 func parseArgs(args []string) ([]Command, error) {
-	getNextArg, stopArgIter := iter.Pull(slices.Values(args))
+	getNextArg, stopArgIter := iter.Pull(resplitSeq(args, COMMAND_SEPARATOR, splitBeforeSeq))
 	defer stopArgIter()
 
 	commands := make([]Command, 0)
@@ -37,13 +38,15 @@ func parseArgs(args []string) ([]Command, error) {
 		var err error
 
 		switch {
+		case currentArg == COMMAND_SEPARATOR:
+			continue
 		case isSetter(currentArg):
 			fallthrough
 		case isQuery(currentArg):
 			kind := currentArg
 
 			currentArg, exists := getNextArg()
-			if exists == false {
+			if !exists || currentArg == COMMAND_SEPARATOR {
 				return nil, fmt.Errorf(
 					"%w: %v name is not provided",
 					TooFewArguments, kind,
@@ -74,6 +77,7 @@ func parseArgs(args []string) ([]Command, error) {
 func parseCommandType(arg string) daemon.CommandType {
 	return daemon.CommandType(strings.ToUpper(arg))
 }
+
 func parseCommand(commandKind string, commandName string, getNextArg func() (string, bool)) (Command, error) {
 	commandType := parseCommandType(commandKind)
 	command, exists := daemonCommands.Map(commandType)[commandName]
@@ -84,7 +88,7 @@ func parseCommand(commandKind string, commandName string, getNextArg func() (str
 		)
 	}
 
-	commandArgs, _ := pullNArgs(getNextArg, command.MaxIn)
+	commandArgs, _ := pullUntilSepOrN(getNextArg, COMMAND_SEPARATOR, command.MaxIn)
 	if len(commandArgs) < command.MinIn {
 		if command.MinIn == command.MaxIn {
 			return Command{}, fmt.Errorf(
@@ -118,11 +122,11 @@ func isAction(currentArg string) bool {
 	return exists
 }
 
-func pullNArgs(getNextArg func() (string, bool), count int) ([]string, bool) {
-	result := make([]string, 0, count)
+func pullUntilSepOrN[T comparable](getNextElem func() (T, bool), sep T, count int) ([]T, bool) {
+	result := make([]T, 0, count)
 	for range count {
-		value, exists := getNextArg()
-		if !exists {
+		value, exists := getNextElem()
+		if !exists || value == sep {
 			return result, false
 		}
 
@@ -130,4 +134,48 @@ func pullNArgs(getNextArg func() (string, bool), count int) ([]string, bool) {
 	}
 
 	return result, true
+}
+
+func resplitSeq[T any](it []T, sep T, splitFn func(s, sep T) iter.Seq[T]) iter.Seq[T] {
+	return func(yield func(T) bool) {
+		for _, el := range it {
+			for splitEl := range splitFn(el, sep) {
+				if !yield(splitEl) {
+					return
+				}
+			}
+		}
+	}
+}
+
+func splitBeforeSeq(s, sep string) iter.Seq[string] {
+	return func(yield func(string) bool) {
+		sepLength := len(sep)
+		for {
+			if len(s) == 0 {
+				return
+			}
+
+			sepIndex := strings.Index(s, sep)
+
+			if sepIndex == -1 {
+				if !yield(s) {
+					return
+				}
+				break
+			}
+
+			if sepIndex != 0 {
+				if !yield(s[:sepIndex]) {
+					return
+				}
+			}
+
+			if !yield(sep) {
+				return
+			}
+
+			s = s[sepIndex+sepLength:]
+		}
+	}
 }
