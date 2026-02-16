@@ -5,8 +5,10 @@ import (
 	"os/signal"
 	"syscall"
 
+	commandparser "github.com/Alnivel/zentile/internal/command_parser"
 	"github.com/Alnivel/zentile/internal/config"
 	"github.com/Alnivel/zentile/internal/daemon/state"
+	"github.com/Alnivel/zentile/internal/types"
 	"github.com/BurntSushi/xgbutil/xevent"
 	log "github.com/sirupsen/logrus"
 )
@@ -19,7 +21,6 @@ func Start(config config.Config, args []string) {
 
 	t := initTracker(CreateWorkspaces())
 	commands := InitCommands(t)
-	bindKeys(commands.KeybindActions)
 
 	pingBeforeXEvent, pingAfterXEvent, pingXQuit := xevent.MainPing(state.X)
 
@@ -34,16 +35,29 @@ func Start(config config.Config, args []string) {
 	pingQuit := make(chan struct{}, 1)
 	go handleInterruptsGracefully(pingQuit)
 
-	pingBeforeCommand, pingAfterCommand := socketListener.HandleIncomingCommands(commands)
+	getCommandByNameAdapter := func(kind types.CommandType, name string) (commandparser.CommandWrap, bool) {
+		return commands.GetByName(kind, name)
+	}
+	commandParser := commandparser.CommandParser{GetCommandByName: getCommandByNameAdapter}
+	keybingingCommandChan, keybindingCommandDonePing := HandleKeybindings(config, commandParser)
+	socketCommandChan, socketResultChan := socketListener.HandleIncomingCommands()
 
 	for {
 		select {
 		case <-pingBeforeXEvent:
 			// Wait for the event to finish processing.
 			<-pingAfterXEvent
-		case <-pingBeforeCommand:
-			// Wait for the event to finish processing.
-			<-pingAfterCommand
+
+		case command := <-socketCommandChan:
+			socketResultChan <- commands.Do(command)
+
+		case command := <-keybingingCommandChan:
+			result := commands.Do(command)
+			if result.Err != nil {
+				log.Error(result.Err.Error())
+			}
+			keybindingCommandDonePing <- struct{}{}
+
 		case <-pingXQuit:
 			return
 		case <-pingQuit:

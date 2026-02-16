@@ -1,7 +1,6 @@
 package config
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -22,7 +21,31 @@ func InitConfig() (Config, error) {
 	config := Config{}
 	writeDefaultConfig()
 	_, err := toml.DecodeFile(configFilePath(), &config)
+	handleLegacyKeybindings(&config)
 	return config, err
+}
+
+var legacyKeybindings = [...]string{
+	"tile",
+	"untile",
+	"make_active_window_master",
+	"increase_master",
+	"decrease_master",
+	"switch_layout",
+	"next_window",
+	"previous_window",
+	"increment_master",
+	"decrement_master",
+}
+
+func handleLegacyKeybindings(config *Config) {
+	for _, command := range legacyKeybindings {
+		keybind, mappingExists := config.Keybindings[command]
+		if mappingExists {
+			config.Keybindings[keybind] = command
+			delete(config.Keybindings, command)
+		}
+	}
 }
 
 func writeDefaultConfig() {
@@ -31,7 +54,7 @@ func writeDefaultConfig() {
 	}
 
 	if _, err := os.Stat(configFilePath()); os.IsNotExist(err) {
-		ioutil.WriteFile(configFilePath(), []byte(defaultConfig), 0644)
+		os.WriteFile(configFilePath(), []byte(defaultConfig), 0644)
 	}
 }
 
@@ -77,32 +100,32 @@ proportion = 0.1
 # Key symbols can be found by pressing keys using the 'xev' program
 
 # Tile the current workspace.
-tile = "Control-Shift-t"
+"Control-Shift-t" = "tile"
 
 # Untile the current workspace.
-untile = "Control-Shift-u"
+"Control-Shift-u" = "untile"
 
 # Make the active window as master.
-make_active_window_master = "Control-Shift-m"
+"Control-Shift-m" = "make_active_window_master"
 
 # Increase the number of masters.
-increase_master = "Control-Shift-i"
+"Control-Shift-i" = "increase_master"
 
 # Decrease the number of masters.
-decrease_master = "Control-Shift-d"
+"Control-Shift-d" = "decrease_master"
 
 # Cycles through the available layouts.
-switch_layout = "Control-Shift-s"
+"Control-Shift-s" = "switch_layout"
 
 # Moves focus to the next window.
-next_window = "Control-Shift-n"
+"Control-Shift-n" = "next_window"
 
 # Moves focus to the previous window.
-previous_window = "Control-Shift-p"
+"Control-Shift-p" = "previous_window"
 
 # Increases the size of the master windows.
-increment_master = "Control-bracketright"
+"Control-bracketright" = "increment_master"
 
 # Decreases the size of the master windows.
-decrement_master = "Control-bracketleft"
+"Control-bracketleft" = "decrement_master"
 `

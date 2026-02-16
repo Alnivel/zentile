@@ -23,7 +23,6 @@ type CommandWrap interface {
 	ValidateArgCount(count int) error
 }
 
-
 type CommandParser struct {
 	GetCommandByName func(kind types.CommandType, name string) (CommandWrap, bool)
 }

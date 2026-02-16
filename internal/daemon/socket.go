@@ -5,6 +5,7 @@ import (
 	"io"
 
 	"github.com/Alnivel/zentile/internal/socket"
+	"github.com/Alnivel/zentile/internal/types"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -17,9 +18,9 @@ func ListenSocket(path string) (Listener, error) {
 	return Listener{listener}, err
 }
 
-func (listener Listener) HandleIncomingCommands(commands Commands) (<-chan struct{}, <-chan struct{}) {
-	pingBefore := make(chan struct{})
-	pingAfter := make(chan struct{})
+func (listener Listener) HandleIncomingCommands() (<-chan types.Command, chan<- types.CommandResult) {
+	commandChan := make(chan types.Command)
+	commandResultChan := make(chan types.CommandResult)
 	go func() {
 		defer listener.Close()
 		for {
@@ -28,14 +29,15 @@ func (listener Listener) HandleIncomingCommands(commands Commands) (<-chan struc
 				log.Warningf("Accept error: %v\n", err)
 				return
 			}
-			go handleConnection(conn, commands, pingBefore, pingAfter)
+			go handleConnection(conn, commandChan, commandResultChan)
 		}
 	}()
-	return pingBefore, pingAfter
+	return commandChan, commandResultChan
 
 }
 
-func handleConnection(conn socket.Conn, commands Commands, pingBefore chan<- struct{}, pingAfter chan<- struct{}) {
+
+func handleConnection(conn socket.Conn, commandChan chan<- types.Command, commandResultChan <-chan types.CommandResult) {
 	defer conn.Close()
 	log.Debug("Connection accepted")
 
@@ -52,7 +54,6 @@ func handleConnection(conn socket.Conn, commands Commands, pingBefore chan<- str
 			return
 		}
 
-		pingBefore <- struct{}{}
 
 		switch message.Kind {
 		case "PING":
@@ -63,14 +64,19 @@ func handleConnection(conn socket.Conn, commands Commands, pingBefore chan<- str
 			fallthrough
 		case "QUERY":
 			if len(message.Args) >= 1 {
-				vals, err := commands.Do(CommandType(message.Kind), message.Args[0], message.Args[1:]...)
-				sendErrOrVals(conn, err, vals...)
+				commandChan <- types.Command{
+					Kind: types.CommandType(message.Kind),
+					Name: message.Args[0],
+					Args: message.Args[1:],
+				}
+
+				result := <-commandResultChan
+				sendErrOrVals(conn, result.Err, result.Messages...)
 			} else {
 				conn.Send("ERR", "Command must have at least one argument")
 			}
 		}
 
-		pingAfter <- struct{}{}
 
 		if err != nil {
 			if errors.Is(err, io.EOF) {
