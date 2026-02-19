@@ -27,11 +27,29 @@ type CommandParser struct {
 	GetCommandByName func(kind types.CommandType, name string) (CommandWrap, bool)
 }
 
-func (parser CommandParser) Parse(s []string) ([]types.Command, error) {
+// Parse provided string into slice of commands. 
+// The commnad string are split by spaces and commas. 
+// A command implicitly takes up to the maximal valid number of arguments for the command
+// while comma explicitly denotes the end of arguments for the command.
+func (parser CommandParser) ParseString(s string) ([]types.Command, error) {
+	return parser.ParseSeq(strings.SplitSeq(s, " "))
+}
+
+// Parse provided slice of strings into slice of commands.
+// The strings are pressumed to be already being split by space and resplit only by comma.
+// A command implicitly takes up to the maximal valid number of arguments for the command
+// while comma explicitly denotes the end of arguments for the command.
+func (parser CommandParser) ParseSlice(s []string) ([]types.Command, error) {
+	return parser.ParseSeq(slices.Values(s))
+}
+
+// Parse provided iterator over strings into slice of commands.
+// The strings are pressumed to be already being split by space and resplit only by comma.
+// A command implicitly takes up to the maximal valid number of arguments for the command
+// while comma explicitly denotes the end of arguments for the command.
+func (parser CommandParser) ParseSeq(it iter.Seq[string]) ([]types.Command, error) {
 	getNextToken, stopTokenIter := iter.Pull(
-		resplitSeq(
-			slices.Values(s),
-			splitAtSeq, COMMAND_SEPARATOR,
+		resplitSeq( it, splitAtSeq, COMMAND_SEPARATOR,
 		))
 	defer stopTokenIter()
 
@@ -84,6 +102,7 @@ func parseCommandType(arg string) types.CommandType {
 	return types.CommandType(strings.ToUpper(arg))
 }
 
+// Parse individual command
 func (parser CommandParser) parseCommand(commandKind string, commandName string, getNextArg func() (string, bool)) (types.Command, error) {
 	commandType := parseCommandType(commandKind)
 	command, exists := parser.GetCommandByName(commandType, commandName)
@@ -106,9 +125,13 @@ func (parser CommandParser) parseCommand(commandKind string, commandName string,
 	}, nil
 }
 
-func pullUntilSepOrN[T comparable](getNextElem func() (T, bool), sep T, count int) ([]T, bool) {
-	result := make([]T, 0, count)
-	for range count {
+// Call getNextElem function n times or until
+// the function returns false or sep.
+// Returns slice of the collected values and
+// status if all requested n values was collected
+func pullUntilSepOrN[T comparable](getNextElem func() (T, bool), sep T, n int) ([]T, bool) {
+	result := make([]T, 0, n)
+	for range n {
 		value, exists := getNextElem()
 		if !exists || value == sep {
 			return result, false

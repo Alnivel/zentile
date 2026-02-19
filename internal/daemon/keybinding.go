@@ -1,7 +1,6 @@
 package daemon
 
 import (
-	"strings"
 	"sync"
 
 	commandparser "github.com/Alnivel/zentile/internal/command_parser"
@@ -38,10 +37,10 @@ func HandleKeybindings(config config.Config, commandParser commandparser.Command
 
 	commandChan := make(chan types.Command)
 	commandDonePing := make(chan struct{})
-	mutex := sync.Mutex{} // Only one command can be executed at the time
+	mutex := sync.Mutex{} // Only one command can be executed at the same time
 
 	for keybinding, command := range config.Keybindings {
-		parsedCommands, err := commandParser.Parse(strings.Split(command, " "))
+		parsedCommands, err := commandParser.ParseString(command)
 		if err != nil {
 			log.Warn(err)
 		}

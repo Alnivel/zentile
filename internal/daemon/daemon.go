@@ -16,11 +16,14 @@ import (
 var Config config.Config
 
 func Start(config config.Config, args []string) {
+	pingQuit := make(chan struct{}, 1)
+	go handleInterruptsGracefully(pingQuit)
+
 	Config = config
 	state.Populate()
 
-	t := initTracker(CreateWorkspaces())
-	commands := InitCommands(t)
+	windowTracker := initTracker(CreateWorkspaces())
+	commands := InitCommands(windowTracker)
 
 	pingBeforeXEvent, pingAfterXEvent, pingXQuit := xevent.MainPing(state.X)
 
@@ -31,9 +34,6 @@ func Start(config config.Config, args []string) {
 		return
 	}
 	defer socketListener.Close()
-
-	pingQuit := make(chan struct{}, 1)
-	go handleInterruptsGracefully(pingQuit)
 
 	getCommandByNameAdapter := func(kind types.CommandType, name string) (commandparser.CommandWrap, bool) {
 		return commands.GetByName(kind, name)

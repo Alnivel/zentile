@@ -36,68 +36,81 @@ func (listener Listener) HandleIncomingCommands() (<-chan types.Command, chan<- 
 
 }
 
-
 func handleConnection(conn socket.Conn, commandChan chan<- types.Command, commandResultChan <-chan types.CommandResult) {
 	defer conn.Close()
 	log.Debug("Connection accepted")
 
 	for {
-		message, err := conn.Receive()
-		switch err {
+		var errOnReceive, errOnSend error
+		message, errOnReceive := conn.Receive()
+
+		switch errOnReceive {
 		case socket.ReadError:
-			// TODO: Add logger
+			log.Error(errOnReceive.Error())
 			return
 		case socket.SplitTooLongError:
-			err := conn.Send("ERR", "You talking too long")
-			_ = err
-			// TODO: Add logger
+			log.Error(errOnReceive.Error())
+
+			errOnSend := conn.Send("ERR", "You talking too long")
+			log.Errorf("Failed to send error to the client: %v\n", errOnSend)
 			return
 		}
 
-
 		switch message.Kind {
 		case "PING":
-			conn.Send("PONG")
+			errOnSend = conn.Send("PONG")
 		case "ACTION":
 			fallthrough
 		case "SET":
 			fallthrough
 		case "QUERY":
 			if len(message.Args) >= 1 {
-				commandChan <- types.Command{
+				command := types.Command{
 					Kind: types.CommandType(message.Kind),
 					Name: message.Args[0],
 					Args: message.Args[1:],
 				}
+				commandChan <- command
 
 				result := <-commandResultChan
-				sendErrOrVals(conn, result.Err, result.Messages...)
+				errOnSend = sendCommandResult(conn, command, result)
 			} else {
-				conn.Send("ERR", "Command must have at least one argument")
+				errOnSend = conn.Send("ERR", "Command must have at least one argument")
 			}
 		}
 
-
-		if err != nil {
-			if errors.Is(err, io.EOF) {
-				log.Debug("Connection was closed")
-			} else {
-				log.Warningf(
-					"Error during handling command:\n\t%s\n\t%s\n",
-					message,
-					err.Error(),
-				)
-			}
-
+		if errOnReceive != nil {
+			logProtocolErr(errOnReceive, message)
+			return
+		}
+		if errOnSend != nil {
+			logProtocolErr(errOnSend, message)
 			return
 		}
 	}
 }
 
-func sendErrOrVals(conn socket.Conn, err error, vals ...string) {
-	if err == nil {
-		conn.Send("OK", vals...)
+func logProtocolErr(err error, message socket.Message) {
+	if errors.Is(err, io.EOF) {
+		log.Debug("Connection was closed")
 	} else {
-		conn.Send("ERR", err.Error())
+		log.Warningf(
+			"Error during handling command:\n\t%s\n\t%s\n",
+			message,
+			err.Error(),
+		)
+	}
+}
+
+func sendCommandResult(conn socket.Conn, command types.Command, result types.CommandResult) error {
+	if result.Err == nil {
+		return conn.Send("OK", result.Messages...)
+	} else {
+		log.Warningf(
+			"Error during handling command:\n\t%v\n\t%v\n",
+			command,
+			result.Err,
+		)
+		return conn.Send("ERR", result.Err.Error())
 	}
 }

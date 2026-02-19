@@ -38,7 +38,7 @@ func Run(config config.Config, args []string) {
 	parser := commandparser.CommandParser{
 		GetCommandByName: getCommandByNameAdapter,
 	}
-	parsedCommands, err := parser.Parse(args)
+	parsedCommands, err := parser.ParseSlice(args)
 	if err != nil {
 		log.Error(err.Error())
 		statusCode = PARSE_ERROR
