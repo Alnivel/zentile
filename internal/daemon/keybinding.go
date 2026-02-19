@@ -1,7 +1,12 @@
 package daemon
 
 import (
+	"sync"
+
+	commandparser "github.com/Alnivel/zentile/internal/command_parser"
+	"github.com/Alnivel/zentile/internal/config"
 	"github.com/Alnivel/zentile/internal/daemon/state"
+	"github.com/Alnivel/zentile/internal/types"
 	"github.com/BurntSushi/xgbutil"
 	"github.com/BurntSushi/xgbutil/keybind"
 	"github.com/BurntSushi/xgbutil/xevent"
@@ -10,9 +15,8 @@ import (
 
 type keyMapper struct{}
 
-func (k keyMapper) bind(action string, f func()) {
-	keyStr := Config.Keybindings[action]
-    if len(keyStr) == 0 {
+func (k keyMapper) bind(keyStr string, f func()) {
+	if len(keyStr) == 0 {
 		return
 	}
 
@@ -27,11 +31,29 @@ func (k keyMapper) bind(action string, f func()) {
 	}
 }
 
-func bindKeys(actions map[string]ActionFunc) {
+func HandleKeybindings(config config.Config, commandParser commandparser.CommandParser) (<-chan types.Command, chan<- struct{}) {
 	keybind.Initialize(state.X)
 	k := keyMapper{}
 
-	for actionname, actionfunc := range actions {
-		k.bind(actionname, actionfunc)
+	commandChan := make(chan types.Command)
+	commandDonePing := make(chan struct{})
+	mutex := sync.Mutex{} // Only one command can be executed at the same time
+
+	for keybinding, command := range config.Keybindings {
+		parsedCommands, err := commandParser.ParseString(command)
+		if err != nil {
+			log.Warn(err)
+		}
+
+		k.bind(keybinding, func() {
+			for _, command := range parsedCommands {
+				mutex.Lock()
+				commandChan <- command
+				<-commandDonePing
+				mutex.Unlock()
+			}
+		})
 	}
+
+	return commandChan, commandDonePing
 }

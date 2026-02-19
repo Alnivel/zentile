@@ -1,6 +1,8 @@
 package daemon
 
 import (
+	"slices"
+
 	"github.com/BurntSushi/xgb/xproto"
 	"github.com/BurntSushi/xgbutil"
 	"github.com/BurntSushi/xgbutil/ewmh"
@@ -37,13 +39,7 @@ func (tr *tracker) populateClients() {
 
 	// If window is tracked, but not in client list
 	for wid := range tr.clients {
-		found := false
-		for _, w := range clientList {
-			if w == wid {
-				found = true
-				break
-			}
-		}
+		found := slices.Contains(clientList, wid)
 
 		if !found {
 			tr.unTrack(wid)

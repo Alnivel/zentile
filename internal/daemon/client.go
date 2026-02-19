@@ -1,6 +1,7 @@
 package daemon
 
 import (
+	"slices"
 	"strconv"
 	"strings"
 
@@ -149,13 +150,7 @@ func hasDecoration(wid xproto.Window) bool {
 // isHidden returns true if the window has been minimized.
 func isHidden(w xproto.Window) bool {
 	states, _ := ewmh.WmStateGet(state.X, w)
-	for _, state := range states {
-		if state == "_NET_WM_STATE_HIDDEN" {
-			return true
-		}
-	}
-
-	return false
+	return slices.Contains(states, "_NET_WM_STATE_HIDDEN")
 }
 
 func shouldIgnore(w xproto.Window) bool {
@@ -164,11 +159,8 @@ func shouldIgnore(w xproto.Window) bool {
 		log.Warn(err)
 	}
 
-	for _, s := range Config.WindowsToIgnore {
-		if strings.EqualFold(c.Class, s) {
-			return true
-		}
+	isClassToIgnore := func(class string) bool {
+		return strings.EqualFold(c.Class, class)
 	}
-
-	return false
+	return slices.ContainsFunc(Config.WindowsToIgnore, isClassToIgnore)
 }

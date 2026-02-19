@@ -5,7 +5,10 @@ import (
 	"os"
 	"strings"
 
+	"github.com/Alnivel/zentile/internal/command_parser"
 	"github.com/Alnivel/zentile/internal/config"
+	"github.com/Alnivel/zentile/internal/daemon"
+	"github.com/Alnivel/zentile/internal/types"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -27,15 +30,28 @@ func Run(config config.Config, args []string) {
 		os.Exit(statusCode)
 	}()
 
-	commands, err := parseArgs(args)
+	commands := daemon.InitCommands(nil)
+	getCommandByNameAdapter := func(kind types.CommandType, name string) (commandparser.CommandWrap, bool) { 
+		return commands.GetByName(kind, name) 
+	}
+
+	parser := commandparser.CommandParser{
+		GetCommandByName: getCommandByNameAdapter,
+	}
+	parsedCommands, err := parser.ParseSlice(args)
 	if err != nil {
 		log.Error(err.Error())
 		statusCode = PARSE_ERROR
 		return
 	}
 
+	socketCommands := make([]types.Command, len(parsedCommands))
+	for i, v := range parsedCommands {
+		socketCommands[i] = types.Command(v)
+	}
+
 	socketPath := "/tmp/zentile.sock"
-	resultChan, err := sendCommands(socketPath, commands)
+	resultChan, err := sendCommands(socketPath, socketCommands)
 	if err != nil {
 		log.Error(err.Error())
 		statusCode = SOCKET_ERROR

@@ -2,6 +2,7 @@ package cli
 
 import (
 	"github.com/Alnivel/zentile/internal/socket"
+	"github.com/Alnivel/zentile/internal/types"
 )
 
 type CommandResult struct {
@@ -10,7 +11,7 @@ type CommandResult struct {
 	err     error
 }
 
-func sendCommands(socketPath string, commands []Command) (<-chan CommandResult, error) {
+func sendCommands(socketPath string, commands []types.Command) (<-chan CommandResult, error) {
 	c, err := socket.Dial(socketPath)
 	if err != nil {
 		return nil, err
@@ -22,7 +23,10 @@ func sendCommands(socketPath string, commands []Command) (<-chan CommandResult, 
 		defer close(resultChan)
 
 		for _, command := range commands {
-			commandMessage := socket.Message(command)
+			commandMessage := socket.Message{
+				Kind: string(command.Kind),
+				Args: append([]string{command.Name}, command.Args...),
+			}
 
 			err := c.SendMessage(commandMessage)
 			if err != nil {
