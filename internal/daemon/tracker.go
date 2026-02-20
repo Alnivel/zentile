@@ -3,11 +3,11 @@ package daemon
 import (
 	"slices"
 
-	"github.com/BurntSushi/xgb/xproto"
-	"github.com/BurntSushi/xgbutil"
-	"github.com/BurntSushi/xgbutil/ewmh"
-	"github.com/BurntSushi/xgbutil/xevent"
-	"github.com/BurntSushi/xgbutil/xprop"
+	"github.com/jezek/xgb/xproto"
+	"github.com/jezek/xgbutil"
+	"github.com/jezek/xgbutil/ewmh"
+	"github.com/jezek/xgbutil/xevent"
+	"github.com/jezek/xgbutil/xprop"
 	"github.com/Alnivel/zentile/internal/daemon/state"
 )
 

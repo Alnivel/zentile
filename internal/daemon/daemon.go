@@ -9,7 +9,7 @@ import (
 	"github.com/Alnivel/zentile/internal/config"
 	"github.com/Alnivel/zentile/internal/daemon/state"
 	"github.com/Alnivel/zentile/internal/types"
-	"github.com/BurntSushi/xgbutil/xevent"
+	"github.com/jezek/xgbutil/xevent"
 	log "github.com/sirupsen/logrus"
 )
 

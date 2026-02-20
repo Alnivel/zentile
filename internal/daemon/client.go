@@ -6,12 +6,12 @@ import (
 	"strings"
 
 	"github.com/Alnivel/zentile/internal/daemon/state"
-	"github.com/BurntSushi/xgb/xproto"
-	"github.com/BurntSushi/xgbutil/ewmh"
-	"github.com/BurntSushi/xgbutil/icccm"
-	"github.com/BurntSushi/xgbutil/motif"
-	"github.com/BurntSushi/xgbutil/xrect"
-	"github.com/BurntSushi/xgbutil/xwindow"
+	"github.com/jezek/xgb/xproto"
+	"github.com/jezek/xgbutil/ewmh"
+	"github.com/jezek/xgbutil/icccm"
+	"github.com/jezek/xgbutil/motif"
+	"github.com/jezek/xgbutil/xrect"
+	"github.com/jezek/xgbutil/xwindow"
 	log "github.com/sirupsen/logrus"
 )
 

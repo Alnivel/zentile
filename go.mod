@@ -1,21 +1,13 @@
 module github.com/Alnivel/zentile
 
-go 1.24
+go 1.24.0
 
 require (
-	github.com/BurntSushi/toml v0.3.1
-	github.com/BurntSushi/xgb v0.0.0-20160522181843-27f122750802
-	github.com/BurntSushi/xgbutil v0.0.0-20160919175755-f7c97cef3b4e
+	github.com/BurntSushi/toml v1.6.0
+	github.com/jezek/xgb v1.3.0
+	github.com/jezek/xgbutil v0.0.0-20260124183602-9fd151d6a51a
 	github.com/mitchellh/go-homedir v1.1.0
-	github.com/sirupsen/logrus v1.4.2
+	github.com/sirupsen/logrus v1.9.4
 )
 
-require (
-	github.com/konsorten/go-windows-terminal-sequences v1.0.1 // indirect
-	golang.org/x/sys v0.0.0-20190422165155-953cdadca894 // indirect
-)
-
-replace (
-	github.com/BurntSushi/xgb => github.com/jezek/xgb v0.0.0-20160522181843-27f122750802
-	github.com/BurntSushi/xgbutil => github.com/jezek/xgbutil v0.0.0-20160919175755-f7c97cef3b4e
-)
+require golang.org/x/sys v0.41.0 // indirect
