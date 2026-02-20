@@ -7,6 +7,7 @@ On-demand tiling for Openbox, Xfce and other [EWMH Compliant Window Managers](ht
 ### Table of Contents
 - [Features](#features)
 - [Installation](#installation)
+- [Usage](#usage)
 - [Config](#config)
 - [Credits](#credits)
 
@@ -18,28 +19,34 @@ On-demand tiling for Openbox, Xfce and other [EWMH Compliant Window Managers](ht
 
 ### Installation
 
-Download the pre-compiled binary from [releases page](https://github.com/blrsn/zentile/releases)
-and set executable permission.
+Use go install
 
 ```
-$ chmod a+x zentile-linux-amd64
-$ ./zentile-linux-amd64
+$ go install github.com/Alnivel/zentile/cmd/zentile@latest
 ```
 
 Or compile from source
 
 ```
-$ go get -u github.com/blrsn/zentile
-$ go install github.com/blrsn/zentile
+$ git clone https://github.com/Alnivel/zentile
+$ cd zentile
+$ go build -o zentile ./cmd/zentile/
 ```
 
-#### Arch Linux
+and then manually move the zentile binary to somewhere in your PATH.
 
-With an AUR helper such as [`yay`](https://github.com/Jguer/yay) installed:
+### Usage
+
+Run the command without arguments to start it as daemon
 ```
-$ yay -S zentile
+$ zentile
 ```
 
+Send commands to the running instance
+```
+$ zentile set layout vertical
+```
+See the full list of commands and more in [`COMMANDS.md`](COMMANDS.md)
 
 ### Config
 
