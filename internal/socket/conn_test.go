@@ -99,6 +99,19 @@ func TestConn_SendReceivePair(t *testing.T) {
 				{"", []string{}},
 			},
 		},
+		{
+			name: "SecondMessageSmallerThanFirst",
+			input: []socket.Message{
+				{"123456789", []string{}},
+				{"1234567", []string{}},
+				{"NextMessage", []string{}},
+			},
+			want: []socket.Message{
+				{"123456789", []string{}},
+				{"1234567", []string{}},
+				{"NextMessage", []string{}},
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

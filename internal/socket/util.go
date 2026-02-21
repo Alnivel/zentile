@@ -32,7 +32,7 @@ func readSplitSeq(conn net.Conn, sep []byte) iter.Seq2[[]byte, error] {
 				}
 			}
 
-			for split := range bytes.SplitSeq(readBuf, sep) {
+			for split := range bytes.SplitSeq(readBuf[:n], sep) {
 				n -= len(split) + sepLen // Account for the separator
 
 				if cap(splitBuf) < len(splitBuf)+len(split) {
