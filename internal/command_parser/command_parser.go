@@ -69,6 +69,8 @@ func (parser CommandParser) ParseSeq(it iter.Seq[string]) ([]types.Command, erro
 		case "set":
 			fallthrough
 		case "query":
+			fallthrough
+		case "for":
 			kind := currentToken
 
 			currentArg, exists := getNextToken()

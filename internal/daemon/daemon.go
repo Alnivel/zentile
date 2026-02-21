@@ -64,7 +64,10 @@ func Start(config config.Config, args []string) {
 			<-pingAfterXEvent
 
 		case commandRequest := <-commandChan:
-			commandRequest.SendResult(commands.Do(commandRequest.Command))
+			log.Debugf("Recieved command %v", commandRequest.Command)
+			result := commands.Do(commandRequest.Command)
+			log.Debugf("The command is done with result %v", result)
+			commandRequest.SendResult(result)
 
 		case <-pingXQuit:
 			return

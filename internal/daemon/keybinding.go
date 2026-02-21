@@ -25,9 +25,10 @@ func (k Keybindings) HandleIncomingCommands(commandChan chan<- CommandRequest, c
 
 	for keyStr, command := range k.commands {
 		bind(keyStr, func() {
-			// Only one command sequence can be executed at the same time
 			chanMutex.Lock()
 			defer chanMutex.Unlock()
+			requestStartNewCommandSequence(commandChan)
+
 			for _, command := range command {
 				commandRequest, replyChan := NewCommandRequest(command)
 

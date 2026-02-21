@@ -6,6 +6,7 @@ const (
 	Action CommandType = "ACTION"
 	Set    CommandType = "SET"
 	Query  CommandType = "QUERY"
+	For    CommandType = "FOR"
 )
 
 type Command struct {

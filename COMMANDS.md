@@ -19,22 +19,25 @@ swap 234, make_active_window_master
 ```
 The parser now correctly identifies two distinct actions: swapping the active window with window `234`, and then promoting the active window to master.
 
+### Targeting
+Most of the commands operate on `target` workspace and window.
+Initially for each command sequence it is the current workspace and the currectly active window, other target can be set using `for` commands - see [context commands](#context_commands).
 
 ## List of commands
 
 ### Actions
 
 #### tile
-Enable tiling for the current workspace
+Enable tiling for the target workspace
 
 #### untile
-Disable tiling for the current workspace
+Disable tiling for the target workspace
 
 #### make_active_window_master
 Makes active window master
 
 #### switch_layout
-Cycle through layouts for the current workspace
+Cycle through layouts for the target workspace
 
 #### increase_master
 Increase number of windows in master column/row
@@ -55,21 +58,30 @@ Focus of the next window
 Focus of the previous window
 
 #### swap \[WID_A\] WID_B
-Swap windows locations in the current layout. If only one WID provided, swap with active window. Do nothing if any of the windows is not on the current workspace.
+Swap windows locations in the target layout. If only one WID provided, swap with target window. Do nothing if any of the windows is not on the target workspace.
 
 ### Queries 
-Queries is prefixed by `query` keyword and mainly useful for scripting. 
-Example (will return the layout for current workspace):
+Queries are prefixed by `query` keyword and mainly useful for scripting. 
+Example (will return the layout for target workspace):
 ```
 $ zentile query layout
 ```
 
 #### query layout
-Print layout of the current workspace
+Print layout of the target workspace
 
 ### Setters
-Setters is prefixed by `set` keyword.
+Setters are prefixed by `set` keyword.
 
 #### set layout LAYOUT_NAME
-Sets the layout for current workspace. Setting to `none` will untile the workspace, setting to valid layout will tile it if needed.
+Sets the layout for target workspace. Setting to `none` will untile the workspace, setting to valid layout will tile it if needed.
+
+### Context commands
+TODO: Write about what context commands are
+
+#### for workspace WORKSPACE_NUM
+Sets target workspace
+
+#### for window WID
+Sets target window
 

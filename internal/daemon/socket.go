@@ -39,6 +39,7 @@ func handleConnection(conn socket.Conn, commandChan chan<- CommandRequest, chanM
 
 	chanMutex.Lock()
 	defer chanMutex.Unlock()
+	requestStartNewCommandSequence(commandChan)
 
 	for {
 		var errOnReceive, errOnSend error
@@ -64,6 +65,8 @@ func handleConnection(conn socket.Conn, commandChan chan<- CommandRequest, chanM
 		case "SET":
 			fallthrough
 		case "QUERY":
+			fallthrough
+		case "FOR":
 			if len(message.Args) >= 1 {
 				command := types.Command{
 					Kind: types.CommandType(message.Kind),
