@@ -3,8 +3,6 @@ package daemon
 import (
 	"sync"
 
-	commandparser "github.com/Alnivel/zentile/internal/command_parser"
-	"github.com/Alnivel/zentile/internal/config"
 	"github.com/Alnivel/zentile/internal/daemon/state"
 	"github.com/Alnivel/zentile/internal/types"
 	"github.com/jezek/xgbutil"
@@ -13,9 +11,38 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-type keyMapper struct{}
+type MutexChan struct {
+	Chan  chan<- types.Command
+	Mutex sync.Mutex
+}
 
-func (k keyMapper) bind(keyStr string, f func()) {
+type Keybindings struct {
+	commands map[string][]types.Command
+}
+
+func (k Keybindings) HandleIncomingCommands(commandChan chan<- CommandRequest, chanMutex *sync.Mutex) {
+	keybind.Initialize(state.X)
+
+	for keyStr, command := range k.commands {
+		bind(keyStr, func() {
+			// Only one command sequence can be executed at the same time
+			chanMutex.Lock()
+			defer chanMutex.Unlock()
+			for _, command := range command {
+				commandRequest, replyChan := NewCommandRequest(command)
+
+				commandChan <- commandRequest
+				result := <-replyChan
+				if result.Err != nil {
+					log.Error(result.Err.Error())
+					break
+				}
+			}
+		})
+	}
+}
+
+func bind(keyStr string, f func()) {
 	if len(keyStr) == 0 {
 		return
 	}
@@ -29,31 +56,4 @@ func (k keyMapper) bind(keyStr string, f func()) {
 	if err != nil {
 		log.Warn(err)
 	}
-}
-
-func HandleKeybindings(config config.Config, commandParser commandparser.CommandParser) (<-chan types.Command, chan<- struct{}) {
-	keybind.Initialize(state.X)
-	k := keyMapper{}
-
-	commandChan := make(chan types.Command)
-	commandDonePing := make(chan struct{})
-	mutex := sync.Mutex{} // Only one command can be executed at the same time
-
-	for keybinding, command := range config.Keybindings {
-		parsedCommands, err := commandParser.ParseString(command)
-		if err != nil {
-			log.Warn(err)
-		}
-
-		k.bind(keybinding, func() {
-			for _, command := range parsedCommands {
-				mutex.Lock()
-				commandChan <- command
-				<-commandDonePing
-				mutex.Unlock()
-			}
-		})
-	}
-
-	return commandChan, commandDonePing
 }

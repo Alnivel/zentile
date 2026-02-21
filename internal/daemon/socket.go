@@ -3,6 +3,7 @@ package daemon
 import (
 	"errors"
 	"io"
+	"sync"
 
 	"github.com/Alnivel/zentile/internal/socket"
 	"github.com/Alnivel/zentile/internal/types"
@@ -18,9 +19,7 @@ func ListenSocket(path string) (Listener, error) {
 	return Listener{listener}, err
 }
 
-func (listener Listener) HandleIncomingCommands() (<-chan types.Command, chan<- types.CommandResult) {
-	commandChan := make(chan types.Command)
-	commandResultChan := make(chan types.CommandResult)
+func (listener Listener) HandleIncomingCommands(commandChan chan<- CommandRequest, chanMutex *sync.Mutex) {
 	go func() {
 		defer listener.Close()
 		for {
@@ -29,16 +28,17 @@ func (listener Listener) HandleIncomingCommands() (<-chan types.Command, chan<- 
 				log.Warningf("Accept error: %v\n", err)
 				return
 			}
-			go handleConnection(conn, commandChan, commandResultChan)
+			go handleConnection(conn, commandChan, chanMutex)
 		}
 	}()
-	return commandChan, commandResultChan
-
 }
 
-func handleConnection(conn socket.Conn, commandChan chan<- types.Command, commandResultChan <-chan types.CommandResult) {
+func handleConnection(conn socket.Conn, commandChan chan<- CommandRequest, chanMutex *sync.Mutex) {
 	defer conn.Close()
 	log.Debug("Connection accepted")
+
+	chanMutex.Lock()
+	defer chanMutex.Unlock()
 
 	for {
 		var errOnReceive, errOnSend error
@@ -70,9 +70,10 @@ func handleConnection(conn socket.Conn, commandChan chan<- types.Command, comman
 					Name: message.Args[0],
 					Args: message.Args[1:],
 				}
-				commandChan <- command
+				commandRequest, replyChan := NewCommandRequest(command)
+				commandChan <- commandRequest
 
-				result := <-commandResultChan
+				result := <-replyChan
 				errOnSend = sendCommandResult(conn, command, result)
 			} else {
 				errOnSend = conn.Send("ERR", "Command must have at least one argument")

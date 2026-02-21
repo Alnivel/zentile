@@ -3,6 +3,7 @@ package daemon
 import (
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 
 	commandparser "github.com/Alnivel/zentile/internal/command_parser"
@@ -26,6 +27,8 @@ func Start(config config.Config, args []string) {
 	commands := InitCommands(windowTracker)
 
 	pingBeforeXEvent, pingAfterXEvent, pingXQuit := xevent.MainPing(state.X)
+	commandChan := make(chan CommandRequest)
+	commandChanMutex := sync.Mutex{}
 
 	socketPath := "/tmp/zentile.sock"
 	socketListener, err := ListenSocket(socketPath)
@@ -34,13 +37,25 @@ func Start(config config.Config, args []string) {
 		return
 	}
 	defer socketListener.Close()
+	socketListener.HandleIncomingCommands(commandChan, &commandChanMutex)
 
 	getCommandByNameAdapter := func(kind types.CommandType, name string) (commandparser.CommandWrap, bool) {
 		return commands.GetByName(kind, name)
 	}
 	commandParser := commandparser.CommandParser{GetCommandByName: getCommandByNameAdapter}
-	keybingingCommandChan, keybindingCommandDonePing := HandleKeybindings(config, commandParser)
-	socketCommandChan, socketResultChan := socketListener.HandleIncomingCommands()
+
+	commandKeybinings := make(map[string][]types.Command)
+	for keyStr, commandStr := range config.Keybindings {
+		commandKeybinings[keyStr], err = commandParser.ParseString(commandStr)
+		if err != nil {
+			log.Warn(err)
+		}
+	}
+
+	keybindings := Keybindings{
+		commandKeybinings,
+	}
+	keybindings.HandleIncomingCommands(commandChan, &commandChanMutex)
 
 	for {
 		select {
@@ -48,15 +63,8 @@ func Start(config config.Config, args []string) {
 			// Wait for the event to finish processing.
 			<-pingAfterXEvent
 
-		case command := <-socketCommandChan:
-			socketResultChan <- commands.Do(command)
-
-		case command := <-keybingingCommandChan:
-			result := commands.Do(command)
-			if result.Err != nil {
-				log.Error(result.Err.Error())
-			}
-			keybindingCommandDonePing <- struct{}{}
+		case commandRequest := <-commandChan:
+			commandRequest.SendResult(commands.Do(commandRequest.Command))
 
 		case <-pingXQuit:
 			return
