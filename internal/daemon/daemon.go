@@ -24,7 +24,7 @@ func Start(config config.Config, args []string) {
 	state.Populate()
 
 	windowTracker := initTracker(CreateWorkspaces())
-	commands := InitCommands(windowTracker)
+	commands := InitCommands(windowTracker, &config)
 
 	pingBeforeXEvent, pingAfterXEvent, pingXQuit := xevent.MainPing(state.X)
 	commandChan := make(chan CommandRequest)

@@ -1,5 +1,7 @@
 package daemon
 
+import "math"
+
 const (
 	MASTER_MAX_PROPORTION = 0.9
 	MASTER_MIN_PROPORTION = 0.1
@@ -18,10 +20,10 @@ type Layout interface {
 	
 	IncMaster()
 	DecreaseMaster()
-	NextClient()
-	PreviousClient()
-	IncrementMaster()
-	DecrementMaster()
+	ClientRelative(relativeTo ClientId, offset int) (Client, bool)
+
+	GetProportion() float64
+	SetProportion(proportion float64)
 	sto() *Store
 }
 
@@ -37,30 +39,12 @@ func (l *VertHorz) Undo() {
 	}
 }
 
-func (l *VertHorz) NextClient() {
-	c := l.Next()
-	c.Activate()
+func (l *VertHorz) GetProportion() float64 {
+	return l.Proportion
 }
 
-func (l *VertHorz) PreviousClient() {
-	c := l.Previous()
-	c.Activate()
-}
-
-func (l *VertHorz) IncrementMaster() {
-	value := l.Proportion + Config.Proportion
-	if value >= MASTER_MAX_PROPORTION {
-		return
-	}
-	l.Proportion = value
-}
-
-func (l *VertHorz) DecrementMaster() {
-	value := l.Proportion - Config.Proportion
-	if value <= MASTER_MIN_PROPORTION {
-		return
-	}
-	l.Proportion = value
+func (l *VertHorz) SetProportion(proportion float64) {
+	l.Proportion = math.Min(math.Max(proportion, MASTER_MIN_PROPORTION), MASTER_MAX_PROPORTION)
 }
 
 func (l *VertHorz) sto() *Store {

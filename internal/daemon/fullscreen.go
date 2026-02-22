@@ -24,18 +24,11 @@ func (fs *FullScreen) Undo() {
 	}
 }
 
-func (fs *FullScreen) NextClient() {
-	fs.Next().Activate()
+func (fs *FullScreen) GetProportion() float64 {
+	return 1
 }
 
-func (fs *FullScreen) PreviousClient() {
-	fs.Previous().Activate()
-}
-
-func (fs *FullScreen) IncrementMaster() {
-}
-
-func (fs *FullScreen) DecrementMaster() {
+func (fs *FullScreen) SetProportion(proportion float64) {
 }
 
 func (fs *FullScreen) sto() *Store {

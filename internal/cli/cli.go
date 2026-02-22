@@ -30,7 +30,7 @@ func Run(config config.Config, args []string) {
 		os.Exit(statusCode)
 	}()
 
-	commands := daemon.InitCommands(nil)
+	commands := daemon.InitCommands(nil, nil)
 	getCommandByNameAdapter := func(kind types.CommandType, name string) (commandparser.CommandWrap, bool) { 
 		return commands.GetByName(kind, name) 
 	}

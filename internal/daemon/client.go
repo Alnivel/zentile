@@ -1,6 +1,7 @@
 package daemon
 
 import (
+	"fmt"
 	"slices"
 	"strconv"
 	"strings"
@@ -24,6 +25,10 @@ func newClientIdFromWid(w xproto.Window) ClientId {
 func ParseClientId(str string) (ClientId, error) {
 	val, err := strconv.ParseUint(str, 0, 32)
 	return ClientId(val), err
+}
+
+func (id ClientId) String() string {
+	return fmt.Sprintf("%#x", uint32(id))
 }
 
 type Client struct {

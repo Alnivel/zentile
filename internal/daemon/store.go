@@ -1,7 +1,7 @@
 package daemon
 
 import (
-	"github.com/Alnivel/zentile/internal/daemon/state"
+	"slices"
 )
 
 type Store struct {
@@ -126,36 +126,19 @@ func (st *Store) All() []Client {
 	return append(st.masters, st.slaves...)
 }
 
-func (st *Store) Next() Client {
+func (st *Store) ClientRelative(relativeTo ClientId, offset int) (Client, bool) {
 	clients := st.All()
-	lastIndex := len(clients) - 1
+	
+	index := slices.IndexFunc(clients, func(c Client) bool {
+		return c.Id == relativeTo
+	})
 
-	for i, c := range clients {
-		if c.window.Id == state.ActiveWin {
-			next := i + 1
-			if next > lastIndex {
-				next = 0
-			}
-			return clients[next]
-		}
+	if index == -1 {
+		return  Client{}, false
 	}
 
-	return Client{}
-}
+	count := len(clients)
+	resultIndex := (count + ((index + offset) % count)) % count
 
-func (st *Store) Previous() Client {
-	clients := st.All()
-	lastIndex := len(clients) - 1
-
-	for i, c := range clients {
-		if c.window.Id == state.ActiveWin {
-			prev := i - 1
-			if prev < 0 {
-				prev = lastIndex
-			}
-			return clients[prev]
-		}
-	}
-
-	return Client{}
+	return clients[resultIndex], true
 }
