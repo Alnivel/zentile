@@ -3,60 +3,59 @@ package daemon
 import (
 	"fmt"
 	"slices"
-
-	"github.com/Alnivel/zentile/internal/daemon/state"
 )
 
 type Workspace struct {
-	IsTiling        bool
+	isTiling        bool
 	activeLayoutNum uint
 	layoutOrder     []string
 	layouts         map[string]Layout
 }
 
-func CreateWorkspaces() map[uint]*Workspace {
-	workspaces := make(map[uint]*Workspace)
-	defaultLayoutOrder := []string{"vertical", "horizontal", "fullscreen"}
-
-	for i := uint(0); i < state.DeskCount; i++ {
-		ws := Workspace{
-			IsTiling:    false,
-			layoutOrder: defaultLayoutOrder,
-			layouts:     createLayouts(defaultLayoutOrder, i),
-		}
-
-		workspaces[i] = &ws
-	}
-
-	return workspaces
+type WorkspaceFactory struct {
 }
 
-func createLayouts(layoutList []string, workspaceNum uint) map[string]Layout {
+var defaultLayoutOrder = []string{"vertical", "horizontal", "fullscreen"}
+
+func (wsf WorkspaceFactory) NewWorkspace(tracker Tracker, num uint) *Workspace {
+	//TODO: Add settings of layout order from config
+
+	return &Workspace{
+		isTiling:    false,
+		layoutOrder: defaultLayoutOrder,
+		layouts:     wsf.createLayouts(tracker, defaultLayoutOrder, num),
+	}
+}
+
+func (wsf WorkspaceFactory) createLayouts(tracker Tracker, layoutList []string, workspaceNum uint) map[string]Layout {
 	layouts := make(map[string]Layout, len(layoutList))
 
 	for _, name := range layoutList {
 		switch name {
 		case "vertical":
 			layouts[name] = &VerticalLayout{&VertHorz{
+				Tracker:      tracker,
 				Store:        buildStore(),
 				Proportion:   0.5,
 				WorkspaceNum: workspaceNum,
 			}}
 		case "horizontal":
 			layouts[name] = &HorizontalLayout{&VertHorz{
+				Tracker:      tracker,
 				Store:        buildStore(),
 				Proportion:   0.5,
 				WorkspaceNum: workspaceNum,
 			}}
 		case "fullscreen":
 			layouts[name] = &FullScreen{
+				Tracker:      tracker,
 				Store:        buildStore(),
 				WorkspaceNum: workspaceNum,
 			}
 		}
 	}
 
-	return  layouts
+	return layouts
 }
 
 func (ws *Workspace) SetLayoutByName(layoutName string) error {
@@ -66,7 +65,7 @@ func (ws *Workspace) SetLayoutByName(layoutName string) error {
 	}
 
 	ws.activeLayoutNum = uint(layoutNum)
-	ws.IsTiling = true
+	ws.isTiling = true
 	ws.ActiveLayout().Do()
 
 	return nil
@@ -104,30 +103,20 @@ func (ws *Workspace) RemoveClient(c Client) {
 	}
 }
 
+// Is the workspace tiling
+func (ws *Workspace) IsTiling() bool {
+	return ws.isTiling
+}
+
 // Tiles the active layout in a workspace
 func (ws *Workspace) Tile() {
-	if ws.IsTiling {
+	if ws.isTiling {
 		ws.ActiveLayout().Do()
 	}
 }
 
 // Untiles the active layout in a workspace.
 func (ws *Workspace) Untile() {
-	ws.IsTiling = false
+	ws.isTiling = false
 	ws.ActiveLayout().Undo()
-}
-
-func (ws *Workspace) printStore() {
-	l := ws.ActiveLayout()
-	st := l.sto()
-	fmt.Println("Number of masters is ", len(st.masters))
-	fmt.Println("Number of slaves is", len(st.slaves))
-
-	for i, c := range st.masters {
-		fmt.Println("master ", " ", i, " - ", c.name())
-	}
-
-	for i, c := range st.slaves {
-		fmt.Println("slave ", " ", i, " - ", c.name())
-	}
 }

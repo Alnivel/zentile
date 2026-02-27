@@ -1,7 +1,6 @@
 package daemon
 
 import (
-	"github.com/Alnivel/zentile/internal/daemon/state"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -11,7 +10,7 @@ type VerticalLayout struct {
 
 func (l *VerticalLayout) Do() {
 	log.Info("Switching to Vertical Layout")
-	wx, wy, ww, wh := state.WorkAreaDimensions(l.WorkspaceNum)
+	wx, wy, ww, wh := l.Tracker.WorkAreaDimensions(l.WorkspaceNum)
 	msize := len(l.masters)
 	ssize := len(l.slaves)
 
@@ -29,7 +28,7 @@ func (l *VerticalLayout) Do() {
 
 		for i, c := range l.masters {
 			if Config.HideDecor {
-				c.UnDecorate()
+				c.Undecorate()
 			}
 			c.MoveResize(mx+gap, gap+wy+i*(mh+gap), mw-2*gap, mh)
 		}
@@ -43,13 +42,13 @@ func (l *VerticalLayout) Do() {
 
 		for i, c := range l.slaves {
 			if Config.HideDecor {
-				c.UnDecorate()
+				c.Undecorate()
 			}
 			c.MoveResize(sx, gap+wy+i*(sh+gap), sw-gap, sh)
 		}
 	}
 
-	state.X.Conn().Sync()
+	l.Tracker.Sync()
 }
 
 type HorizontalLayout struct {
@@ -58,7 +57,7 @@ type HorizontalLayout struct {
 
 func (l *HorizontalLayout) Do() {
 	log.Info("Switching to Horizontal Layout")
-	wx, wy, ww, wh := state.WorkAreaDimensions(l.WorkspaceNum)
+	wx, wy, ww, wh := l.Tracker.WorkAreaDimensions(l.WorkspaceNum)
 	msize := len(l.masters)
 	ssize := len(l.slaves)
 
@@ -76,7 +75,7 @@ func (l *HorizontalLayout) Do() {
 
 		for i, c := range l.masters {
 			if Config.HideDecor {
-				c.UnDecorate()
+				c.Undecorate()
 			}
 			c.MoveResize(gap+wx+i*(mw+gap), my+gap, mw, mh-2*gap)
 		}
@@ -90,11 +89,11 @@ func (l *HorizontalLayout) Do() {
 
 		for i, c := range l.slaves {
 			if Config.HideDecor {
-				c.UnDecorate()
+				c.Undecorate()
 			}
 			c.MoveResize(gap+wx+i*(sw+gap), sy, sw, sh-gap)
 		}
 	}
 
-	state.X.Conn().Sync()
+	l.Tracker.Sync()
 }

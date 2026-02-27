@@ -8,11 +8,14 @@ import (
 
 	commandparser "github.com/Alnivel/zentile/internal/command_parser"
 	"github.com/Alnivel/zentile/internal/config"
-	"github.com/Alnivel/zentile/internal/daemon/state"
+	"github.com/Alnivel/zentile/internal/daemon/backend"
 	"github.com/Alnivel/zentile/internal/types"
-	"github.com/jezek/xgbutil/xevent"
 	log "github.com/sirupsen/logrus"
 )
+
+type Client = backend.Client
+type Tracker = backend.Tracker[*Workspace]
+type Keybinder = backend.Keybinder
 
 var Config config.Config
 
@@ -21,12 +24,24 @@ func Start(config config.Config, args []string) {
 	go handleInterruptsGracefully(pingQuit)
 
 	Config = config
-	state.Populate()
 
-	windowTracker := initTracker(CreateWorkspaces())
+	x11Backend, err := backend.NewX11Backend()
+	if err != nil {
+		log.Error(err.Error())
+		return
+	}
+
+	workspaceFactory := WorkspaceFactory{}
+	windowTracker, err := backend.NewTrackerFor(x11Backend, Config.WindowsToIgnore, workspaceFactory.NewWorkspace)
+	if err != nil {
+		log.Error(err.Error())
+		return
+	}
+
+	windowTracker.StartTracking()
 	commands := InitCommands(windowTracker, &config)
 
-	pingBeforeXEvent, pingAfterXEvent, pingXQuit := xevent.MainPing(state.X)
+	pingBeforeXEvent, pingAfterXEvent, pingXQuit := backend.NewMainLoopFor(x11Backend)
 	commandChan := make(chan CommandRequest)
 	commandChanMutex := sync.Mutex{}
 
@@ -53,7 +68,8 @@ func Start(config config.Config, args []string) {
 	}
 
 	keybindings := Keybindings{
-		commandKeybinings,
+		keybinder: backend.NewKeybinderFor(x11Backend),
+		commands:  commandKeybinings,
 	}
 	keybindings.HandleIncomingCommands(commandChan, &commandChanMutex)
 

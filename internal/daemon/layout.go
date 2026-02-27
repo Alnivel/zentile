@@ -1,6 +1,8 @@
 package daemon
 
-import "math"
+import (
+	"math"
+)
 
 const (
 	MASTER_MAX_PROPORTION = 0.9
@@ -12,15 +14,13 @@ type Layout interface {
 	Undo()
 	Add(client Client)
 	Remove(client Client)
-	MakeMaster(client Client) bool
-	Swap(client Client, otherClient Client) bool
 
-	MakeMasterById(id ClientId) bool
-	SwapById(id ClientId, otherId ClientId) bool
-	
+	MakeMaster(client Client) bool
+	Swap(this Client, that Client) bool
+
 	IncMaster()
 	DecreaseMaster()
-	ClientRelative(relativeTo ClientId, offset int) (Client, bool)
+	ClientRelative(relativeTo Client, offset int) (Client, bool)
 
 	GetProportion() float64
 	SetProportion(proportion float64)
@@ -31,6 +31,7 @@ type VertHorz struct {
 	*Store
 	Proportion   float64
 	WorkspaceNum uint
+	Tracker Tracker
 }
 
 func (l *VertHorz) Undo() {

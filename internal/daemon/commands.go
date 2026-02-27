@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/Alnivel/zentile/internal/config"
-	"github.com/Alnivel/zentile/internal/daemon/state"
 	"github.com/Alnivel/zentile/internal/types"
 )
 
@@ -28,66 +27,66 @@ type Commands struct {
 }
 
 type CommandContext struct {
-	TargetCid         ClientId
-	TargetWokspaceNum uint
-	CidVariables      map[string]ClientId
+	TargetClient       Client
+	TargetWorkspaceNum uint
+	Variables          map[string]Client
 }
 
 var defaultCtx CommandContext
 
-func InitCommands(tracker *tracker, config *config.Config) Commands {
+func InitCommands(tracker Tracker, config *config.Config) Commands {
 	var ctx *CommandContext = &defaultCtx
 
-	var workspaces map[uint]*Workspace
-
 	if tracker != nil {
-		workspaces = tracker.workspaces
-		defaultCtx.TargetCid = ClientId(state.ActiveWin)
-		defaultCtx.TargetWokspaceNum = state.CurrentDesk
+		if client, exists := tracker.ActiveClient(); exists {
+			defaultCtx.TargetClient = client
+		}
+		defaultCtx.TargetWorkspaceNum = tracker.CurentWorkspaceNum()
 	} else {
 		// It's okay for it to be nil,
 		// the actions will be discarded
 		// at the end of this function
-		workspaces = nil
 	}
 
 	keybindActions := map[string]func(){
 		"tile": func() {
-			ws := workspaces[ctx.TargetWokspaceNum]
-			ws.IsTiling = true
+			ws := tracker.Workspace(ctx.TargetWorkspaceNum)
+			ws.isTiling = true
 			ws.Tile()
 		},
 		"untile": func() {
-			ws := workspaces[ctx.TargetWokspaceNum]
+			ws := tracker.Workspace(ctx.TargetWorkspaceNum)
 			ws.Untile()
 		},
 		"make_active_window_master": func() {
-			c := tracker.clients[state.ActiveWin]
-			ws := workspaces[state.CurrentDesk]
-			ws.ActiveLayout().MakeMaster(c)
-			ws.Tile()
+			ws := tracker.ActiveWorkspace()
+			client, exists := tracker.ActiveClient()
+			if exists {
+				ws.ActiveLayout().MakeMaster(client)
+				ws.Tile()
+			}
 		},
 		"switch_layout": func() {
-			workspaces[ctx.TargetWokspaceNum].SwitchLayout()
+			tracker.Workspace(ctx.TargetWorkspaceNum).SwitchLayout()
 		},
 		"increase_master": func() {
-			ws := workspaces[ctx.TargetWokspaceNum]
+			ws := tracker.Workspace(ctx.TargetWorkspaceNum)
 			ws.ActiveLayout().IncMaster()
 			ws.Tile()
 		},
 		"decrease_master": func() {
-			ws := workspaces[ctx.TargetWokspaceNum]
+			ws := tracker.Workspace(ctx.TargetWorkspaceNum)
 			ws.ActiveLayout().DecreaseMaster()
 			ws.Tile()
 		},
 		"increment_master": func() {
-			ws := workspaces[ctx.TargetWokspaceNum]
+			ws := tracker.Workspace(ctx.TargetWorkspaceNum)
 			layout := ws.ActiveLayout()
 			layout.SetProportion(layout.GetProportion() + config.Proportion)
 			ws.Tile()
 		},
 		"decrement_master": func() {
-			ws := workspaces[ctx.TargetWokspaceNum]
+			ws := tracker.Workspace(ctx.TargetWorkspaceNum)
 			layout := ws.ActiveLayout()
 			layout.SetProportion(layout.GetProportion() - config.Proportion)
 			ws.Tile()
@@ -99,8 +98,10 @@ func InitCommands(tracker *tracker, config *config.Config) Commands {
 		"__start_new_command_sequence": CommandWrap{
 			minIn: 0, maxIn: 0,
 			fn: func(args ...string) ([]string, error) {
-				ctx.TargetCid = ClientId(state.ActiveWin)
-				ctx.TargetWokspaceNum = state.CurrentDesk
+				if client, exists := tracker.ActiveClient(); exists {
+					ctx.TargetClient = client
+				}
+				ctx.TargetWorkspaceNum = tracker.CurentWorkspaceNum()
 				return nil, nil
 			},
 		},
@@ -117,12 +118,12 @@ func InitCommands(tracker *tracker, config *config.Config) Commands {
 					offset = int(parsedOffset)
 				}
 
-				ws := workspaces[ctx.TargetWokspaceNum]
-				prevWindow, found := ws.ActiveLayout().ClientRelative(ctx.TargetCid, offset)
+				ws := tracker.Workspace(ctx.TargetWorkspaceNum)
+				nextClient, found := ws.ActiveLayout().ClientRelative(ctx.TargetClient, offset)
 				if !found {
 					return nil, NoWindowInWorkspace
 				}
-				prevWindow.Activate()
+				nextClient.Activate()
 				return nil, nil
 			},
 		},
@@ -139,35 +140,35 @@ func InitCommands(tracker *tracker, config *config.Config) Commands {
 					offset = int(parsedOffset)
 				}
 
-				ws := workspaces[ctx.TargetWokspaceNum]
-				prevWindow, found := ws.ActiveLayout().ClientRelative(ctx.TargetCid, -offset)
+				ws := tracker.Workspace(ctx.TargetWorkspaceNum)
+				prevClient, found := ws.ActiveLayout().ClientRelative(ctx.TargetClient, -offset)
 				if !found {
 					return nil, NoWindowInWorkspace
 				}
-				prevWindow.Activate()
+				prevClient.Activate()
 				return nil, nil
 			},
 		},
 		"swap": CommandWrap{
 			minIn: 1, maxIn: 2,
 			fn: func(args ...string) ([]string, error) {
-				var secondId, firstId ClientId
+				var secondClient, firstClient Client
 				var secondIdErr, firstIdErr error
 
-				firstId, firstIdErr = parseClientId(args[0], ctx)
+				firstClient, firstIdErr = parseClient(args[0], ctx, tracker)
 
 				if len(args) == 1 {
-					secondId = ctx.TargetCid
+					secondClient = ctx.TargetClient
 				} else {
-					secondId, secondIdErr = parseClientId(args[1], ctx)
+					secondClient, secondIdErr = parseClient(args[1], ctx, tracker)
 				}
 
 				if err := errors.Join(firstIdErr, secondIdErr); err != nil {
 					return nil, err
 				}
 
-				ws := workspaces[ctx.TargetWokspaceNum]
-				success := ws.ActiveLayout().SwapById(secondId, firstId)
+				ws := tracker.Workspace(ctx.TargetWorkspaceNum)
+				success := ws.ActiveLayout().Swap(secondClient, firstClient)
 				if !success {
 					return nil, fmt.Errorf(
 						"Cliend id %v was not found in current workspace",
@@ -194,7 +195,7 @@ func InitCommands(tracker *tracker, config *config.Config) Commands {
 			minIn: 1, maxIn: 1,
 			fn: func(args ...string) ([]string, error) {
 				layoutName := args[0]
-				ws := workspaces[ctx.TargetWokspaceNum]
+				ws := tracker.Workspace(ctx.TargetWorkspaceNum)
 
 				if layoutName == "none" {
 					ws.Untile()
@@ -209,8 +210,8 @@ func InitCommands(tracker *tracker, config *config.Config) Commands {
 		"layout": CommandWrap{
 			minIn: 0, maxIn: 0,
 			fn: func(args ...string) ([]string, error) {
-				ws := workspaces[ctx.TargetWokspaceNum]
-				if ws.IsTiling {
+				ws := tracker.Workspace(ctx.TargetWorkspaceNum)
+				if ws.isTiling {
 					return []string{ws.ActiveLayoutName()}, nil
 				} else {
 					return []string{"none"}, nil
@@ -230,14 +231,14 @@ func InitCommands(tracker *tracker, config *config.Config) Commands {
 					}
 				}
 
-				ws := workspaces[ctx.TargetWokspaceNum]
-				window, found := ws.ActiveLayout().ClientRelative(ctx.TargetCid, int(offset))
+				ws := tracker.Workspace(ctx.TargetWorkspaceNum)
+				client, found := ws.ActiveLayout().ClientRelative(ctx.TargetClient, int(offset))
 				if !found {
 					return nil, NoWindowInWorkspace
 				}
-				ctx.CidVariables["%queried"] = window.Id
+				ctx.Variables["%queried"] = client
 
-				return []string{window.Id.String()}, nil
+				return []string{client.String()}, nil
 			},
 		},
 	}
@@ -245,12 +246,12 @@ func InitCommands(tracker *tracker, config *config.Config) Commands {
 		"window": CommandWrap{
 			minIn: 1, maxIn: 1,
 			fn: func(args ...string) ([]string, error) {
-				cid, err := parseClientId(args[0], ctx)
+				cid, err := parseClient(args[0], ctx, tracker)
 				if err != nil {
 					err = fmt.Errorf("Parse error for client id \"%v\": %w", args[0], err)
 				}
 
-				ctx.TargetCid = cid
+				ctx.TargetClient = cid
 
 				return nil, err
 			},
@@ -261,11 +262,11 @@ func InitCommands(tracker *tracker, config *config.Config) Commands {
 				workspaceNum, err := strconv.ParseUint(args[0], 10, 64)
 				if err != nil {
 					err = fmt.Errorf("Parse error for workspace number \"%v\": %w", args[0], err)
-				} else if workspaceNum >= uint64(state.DeskCount) {
+				} else if workspaceNum >= uint64(tracker.WorkspaceCount()) {
 					err = fmt.Errorf("Parse error for workspace number \"%v\": number is out of range", args[0])
 				}
 
-				ctx.TargetWokspaceNum = uint(workspaceNum)
+				ctx.TargetWorkspaceNum = uint(workspaceNum)
 
 				return nil, err
 			},
@@ -282,29 +283,34 @@ func InitCommands(tracker *tracker, config *config.Config) Commands {
 	return commandCollection
 }
 
-func parseClientId(arg string, ctx *CommandContext) (ClientId, error) {
-	var id ClientId
+func parseClient(arg string, ctx *CommandContext, tr Tracker) (Client, error) {
+	var client Client
 	var err error = nil
 
 	switch {
 	case arg == "%target":
-		id = ctx.TargetCid
+		client = ctx.TargetClient
 	case arg == "%queried":
 		fallthrough
 	case strings.HasPrefix(arg, "%"):
 		var exists bool
-		id, exists = ctx.CidVariables[arg]
+		client, exists = ctx.Variables[arg]
 		if !exists {
 			err = fmt.Errorf("Parse error for client id \"%v\": variable do not exists", arg)
 		}
 	default:
-		id, err := ParseClientId(arg)
+		var exists bool
+		id, err := tr.ParseClientId(arg)
 		if err != nil {
-			return id, fmt.Errorf("Parse error for client id \"%v\": %w", arg, err)
+			return nil, fmt.Errorf("Parse error for client id \"%v\": %w", arg, err)
+		}
+		client, exists = tr.Client(id)
+		if !exists {
+			err = fmt.Errorf("Client id \"%v\" is not tracked", arg)
 		}
 	}
 
-	return id, err
+	return client, err
 }
 
 // TODO: Remove when keybind dispatching will be redone

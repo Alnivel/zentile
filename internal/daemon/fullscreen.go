@@ -1,19 +1,19 @@
 package daemon
 
 import (
-	"github.com/Alnivel/zentile/internal/daemon/state"
 	log "github.com/sirupsen/logrus"
 )
 
 type FullScreen struct {
 	*Store
 	WorkspaceNum uint
+	Tracker Tracker
 }
 
 func (fs *FullScreen) Do() {
 	log.Info("Switching to Fullscreen layout")
 	for _, c := range fs.Store.All() {
-		x, y, w, h := state.WorkAreaDimensions(fs.WorkspaceNum)
+		x, y, w, h := fs.Tracker.WorkAreaDimensions(fs.WorkspaceNum)
 		c.MoveResize(x, y, w, h)
 	}
 }
