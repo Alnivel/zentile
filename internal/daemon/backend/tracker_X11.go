@@ -160,8 +160,9 @@ func (tr *X11Tracker[T]) updateClients() {
 	clientList, _ := ewmh.ClientListStackingGet(tr.X)
 
 	for _, wid := range clientList {
-		c := tr.getClass(wid)
-		if tr.isWindowHidden(wid) || c == nil || tr.shouldIgnore(c.Class) {
+		if !tr.isWindowNormal(wid) || tr.isWindowHidden(wid) ||
+			!tr.isWindowResizable(wid) ||
+			tr.shouldIgnore(wid) {
 			continue
 		}
 
@@ -213,24 +214,60 @@ func (tr *X11Tracker[T]) newClient(wid xproto.Window) X11Client {
 	}
 }
 
+func (tr *X11Tracker[T]) isWindowNormal(w xproto.Window) bool {
+	windowTypes, err := ewmh.WmWindowTypeGet(tr.X, w)
+	if err != nil {
+		log.Debugf("Failed to retrive window type for %v", w)
+		return true
+	}
+	for _, windowType := range windowTypes {
+		if windowType != "_NET_WM_WINDOW_TYPE_NORMAL" {
+			return false
+		}
+	}
+	return true
+}
+
 // isWindowHidden returns true if the window has been minimized.
 func (tr *X11Tracker[T]) isWindowHidden(w xproto.Window) bool {
 	states, _ := ewmh.WmStateGet(tr.X, w)
 	return slices.Contains(states, "_NET_WM_STATE_HIDDEN")
 }
 
-func (tr *X11Tracker[T]) getClass(w xproto.Window) *icccm.WmClass {
-	c, err := icccm.WmClassGet(tr.X, w)
+func (tr *X11Tracker[T]) isWindowResizable(w xproto.Window) bool {
+	allowedActions, err := ewmh.WmAllowedActionsGet(tr.X, w)
 	if err != nil {
-		log.Warn(err)
+		log.Debugf("Failed to retrive allowed actions for %v", w)
+	} else if !slices.Contains(allowedActions, "_NET_WM_ACTION_RESIZE") {
+		return false
 	}
 
-	return c
+	hints, err := icccm.WmNormalHintsGet(tr.X, w)
+	if err != nil || hints == nil {
+		log.Debugf("Failed to retrive normal hints for %v", w)
+	} else if hints.MinWidth == hints.MaxWidth && hints.MinHeight == hints.MaxHeight {
+		return false
+	}
+
+	return true
+
 }
 
-func (tr *X11Tracker[T]) shouldIgnore(clientClass string) bool {
-	isClassToIgnore := func(class string) bool {
-		return strings.EqualFold(clientClass, class)
+func (tr *X11Tracker[T]) shouldIgnore(w xproto.Window) bool {
+	classPair, err := icccm.WmClassGet(tr.X, w)
+	if err != nil {
+		log.Warn(err)
+		return true
+	}
+
+	if classPair == nil {
+		return true
+	}
+
+	class := classPair.Class
+
+	isClassToIgnore := func(classToIgnore string) bool {
+		return strings.EqualFold(class, classToIgnore)
 	}
 	return slices.ContainsFunc(tr.classesToIgnore, isClassToIgnore)
 }
