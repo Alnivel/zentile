@@ -2,6 +2,8 @@ package daemon
 
 import (
 	"math"
+
+	"github.com/Alnivel/zentile/internal/config"
 )
 
 const (
@@ -32,6 +34,7 @@ type VertHorz struct {
 	Proportion   float64
 	WorkspaceNum uint
 	Tracker Tracker
+	Config *config.WorkspaceConfig
 }
 
 func (l *VertHorz) Undo() {

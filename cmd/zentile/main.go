@@ -27,7 +27,7 @@ func main() {
 
 	config, err := config.InitConfig()
 	if err != nil {
-		return
+		log.Errorf("Error during parsing config: %v", err)
 	}
 	setLogLevel(flags.verbose)
 

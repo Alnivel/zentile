@@ -1,6 +1,7 @@
 package daemon
 
 import (
+	"github.com/Alnivel/zentile/internal/config"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -8,6 +9,7 @@ type FullScreen struct {
 	*Store
 	WorkspaceNum uint
 	Tracker Tracker
+	Config *config.WorkspaceConfig
 }
 
 func (fs *FullScreen) Do() {

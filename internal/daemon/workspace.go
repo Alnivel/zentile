@@ -3,6 +3,8 @@ package daemon
 import (
 	"fmt"
 	"slices"
+
+	"github.com/Alnivel/zentile/internal/config"
 )
 
 type Workspace struct {
@@ -13,44 +15,46 @@ type Workspace struct {
 }
 
 type WorkspaceFactory struct {
+	config *config.Config
 }
 
-var defaultLayoutOrder = []string{"vertical", "horizontal", "fullscreen"}
-
 func (wsf WorkspaceFactory) NewWorkspace(tracker Tracker, num uint) *Workspace {
-	//TODO: Add settings of layout order from config
+	workspaceConfig := wsf.config.WorkspaceConfig(num)
 
 	return &Workspace{
-		isTiling:    false,
-		layoutOrder: defaultLayoutOrder,
-		layouts:     wsf.createLayouts(tracker, defaultLayoutOrder, num),
+		isTiling:    workspaceConfig.StartTiling,
+		layoutOrder: workspaceConfig.Layouts,
+		layouts:     wsf.createLayouts(tracker, &workspaceConfig, num),
 	}
 }
 
-func (wsf WorkspaceFactory) createLayouts(tracker Tracker, layoutList []string, workspaceNum uint) map[string]Layout {
-	layouts := make(map[string]Layout, len(layoutList))
+func (wsf WorkspaceFactory) createLayouts(tracker Tracker, config *config.WorkspaceConfig, workspaceNum uint) map[string]Layout {
+	layouts := make(map[string]Layout, len(config.Layouts))
 
-	for _, name := range layoutList {
+	for _, name := range config.Layouts {
 		switch name {
 		case "vertical":
 			layouts[name] = &VerticalLayout{&VertHorz{
 				Tracker:      tracker,
 				Store:        buildStore(),
-				Proportion:   0.5,
+				Proportion:   config.Proportion,
 				WorkspaceNum: workspaceNum,
+				Config:       config,
 			}}
 		case "horizontal":
 			layouts[name] = &HorizontalLayout{&VertHorz{
 				Tracker:      tracker,
 				Store:        buildStore(),
-				Proportion:   0.5,
+				Proportion:   config.Proportion,
 				WorkspaceNum: workspaceNum,
+				Config:       config,
 			}}
 		case "fullscreen":
 			layouts[name] = &FullScreen{
 				Tracker:      tracker,
 				Store:        buildStore(),
 				WorkspaceNum: workspaceNum,
+				Config:       config,
 			}
 		}
 	}

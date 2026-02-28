@@ -17,13 +17,9 @@ type Client = backend.Client
 type Tracker = backend.Tracker[*Workspace]
 type Keybinder = backend.Keybinder
 
-var Config config.Config
-
 func Start(config config.Config, args []string) {
 	pingQuit := make(chan struct{}, 1)
 	go handleInterruptsGracefully(pingQuit)
-
-	Config = config
 
 	x11Backend, err := backend.NewX11Backend()
 	if err != nil {
@@ -31,8 +27,8 @@ func Start(config config.Config, args []string) {
 		return
 	}
 
-	workspaceFactory := WorkspaceFactory{}
-	windowTracker, err := backend.NewTrackerFor(x11Backend, Config.WindowsToIgnore, workspaceFactory.NewWorkspace)
+	workspaceFactory := WorkspaceFactory{&config}
+	windowTracker, err := backend.NewTrackerFor(x11Backend, config.WindowsToIgnore, workspaceFactory.NewWorkspace)
 	if err != nil {
 		log.Error(err.Error())
 		return

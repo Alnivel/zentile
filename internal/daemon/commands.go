@@ -82,13 +82,13 @@ func InitCommands(tracker Tracker, config *config.Config) Commands {
 		"increment_master": func() {
 			ws := tracker.Workspace(ctx.TargetWorkspaceNum)
 			layout := ws.ActiveLayout()
-			layout.SetProportion(layout.GetProportion() + config.Proportion)
+			layout.SetProportion(layout.GetProportion() + config.ProportionStep)
 			ws.Tile()
 		},
 		"decrement_master": func() {
 			ws := tracker.Workspace(ctx.TargetWorkspaceNum)
 			layout := ws.ActiveLayout()
-			layout.SetProportion(layout.GetProportion() - config.Proportion)
+			layout.SetProportion(layout.GetProportion() - config.ProportionStep)
 			ws.Tile()
 		},
 	}

@@ -18,7 +18,7 @@ func (l *VerticalLayout) Do() {
 	mw := int(float64(ww) * l.Proportion)
 	sx := mx + mw
 	sw := ww - mw
-	gap := Config.Gap
+	gap := l.Config.Gap
 
 	if msize > 0 {
 		mh := (wh - (msize+1)*gap) / msize
@@ -27,7 +27,7 @@ func (l *VerticalLayout) Do() {
 		}
 
 		for i, c := range l.masters {
-			if Config.HideDecor {
+			if l.Config.HideDecor {
 				c.Undecorate()
 			}
 			c.MoveResize(mx+gap, gap+wy+i*(mh+gap), mw-2*gap, mh)
@@ -41,7 +41,7 @@ func (l *VerticalLayout) Do() {
 		}
 
 		for i, c := range l.slaves {
-			if Config.HideDecor {
+			if l.Config.HideDecor {
 				c.Undecorate()
 			}
 			c.MoveResize(sx, gap+wy+i*(sh+gap), sw-gap, sh)
@@ -65,7 +65,7 @@ func (l *HorizontalLayout) Do() {
 	mh := int(float64(wh) * l.Proportion)
 	sy := my + mh
 	sh := wh - mh
-	gap := Config.Gap
+	gap := l.Config.Gap
 
 	if msize > 0 {
 		mw := (ww - (msize+1)*gap) / msize
@@ -74,7 +74,7 @@ func (l *HorizontalLayout) Do() {
 		}
 
 		for i, c := range l.masters {
-			if Config.HideDecor {
+			if l.Config.HideDecor {
 				c.Undecorate()
 			}
 			c.MoveResize(gap+wx+i*(mw+gap), my+gap, mw, mh-2*gap)
@@ -88,7 +88,7 @@ func (l *HorizontalLayout) Do() {
 		}
 
 		for i, c := range l.slaves {
-			if Config.HideDecor {
+			if l.Config.HideDecor {
 				c.Undecorate()
 			}
 			c.MoveResize(gap+wx+i*(sw+gap), sy, sw, sh-gap)
