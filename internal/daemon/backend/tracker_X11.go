@@ -161,7 +161,7 @@ func (tr *X11Tracker[T]) updateClients() {
 
 	for _, wid := range clientList {
 		c := tr.getClass(wid)
-		if tr.isWindowHidden(wid) || tr.shouldIgnore(c.Class) {
+		if tr.isWindowHidden(wid) || c == nil || tr.shouldIgnore(c.Class) {
 			continue
 		}
 
